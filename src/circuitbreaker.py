@@ -41,9 +41,9 @@ class CircuitBreaker(object):
         except self._expected_exception:
             self.on_failure()
             raise
-        else:
-            self.on_success()
-            return result
+
+        self.on_success()
+        return result
 
     def on_success(self):
         """
