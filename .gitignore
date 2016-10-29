@@ -1,3 +1,7 @@
 .idea
 __pycache__
 *.pyc
+.cache
+.tox
+/env
+/circuitbreaker.egg-info

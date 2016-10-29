@@ -7,7 +7,8 @@ STATE_HALF_OPEN = 'half_open'
 
 
 class CircuitBreaker(object):
-    def __init__(self, expected_exception=Exception, failure_threshold=5, recover_timeout=30, name=None):
+    def __init__(self, expected_exception=Exception, failure_threshold=5,
+                 recover_timeout=30, name=None):
         self._expected_exception = expected_exception
         self._failure_count = 0
         self._failure_threshold = failure_threshold
@@ -33,10 +34,11 @@ class CircuitBreaker(object):
 
     def call(self, func, *args, **kwargs):
         """
-        Calls the decorated function and applies the circuit breaker rules on success or failure
+        Calls the decorated function and applies the circuit breaker
+        rules on success or failure
         :param func: Decorated function
         """
-        if not self.__is_closed():
+        if not self.closed:
             raise CircuitBreakerError(self)
         try:
             result = func(*args, **kwargs)
@@ -46,17 +48,6 @@ class CircuitBreaker(object):
 
         self.__success()
         return result
-
-    def __is_closed(self):
-        """
-        Check if state is CLOSED
-        Set state to HALF_OPEN and allow the next execution, if recovery timeout has been reached
-        """
-        if self._state == STATE_OPEN and self.open_remaining <= 0:
-            self._state = STATE_HALF_OPEN
-            return True
-
-        return self._state == STATE_CLOSED
 
     def __success(self):
         """
@@ -97,7 +88,7 @@ class CircuitBreaker(object):
     @property
     def open_remaining(self):
         """
-        Number of seconds (int) remaining, the circuit breaker stays in OPEN state
+        Number of seconds remaining, the circuit breaker stays in OPEN state
         :return: int
         """
         return (self.open_until - datetime.utcnow()).total_seconds()
@@ -108,7 +99,11 @@ class CircuitBreaker(object):
 
     @property
     def closed(self):
-        return self._state is not STATE_OPEN
+        return self.state is not STATE_OPEN
+
+    @property
+    def opened(self):
+        return not self.closed
 
     @property
     def name(self):
@@ -116,6 +111,8 @@ class CircuitBreaker(object):
 
     @property
     def state(self):
+        if self._state == STATE_OPEN and self.open_remaining <= 0:
+            return STATE_HALF_OPEN
         return self._state
 
     def __str__(self, *args, **kwargs):
@@ -134,7 +131,7 @@ class CircuitBreakerError(Exception):
         self._circuit_breaker = circuit_breaker
 
     def __str__(self, *args, **kwargs):
-        return 'CIRCUIT "%s" OPEN until %s (%d failures, %d sec remaining)' % (
+        return 'Circuit "%s" OPEN until %s (%d failures, %d sec remaining)' % (
             self._circuit_breaker.name,
             self._circuit_breaker.open_until,
             self._circuit_breaker.failure_count,
@@ -150,27 +147,25 @@ class CircuitBreakerMonitor(object):
         cls.circuit_breakers[circuit_breaker.name] = circuit_breaker
 
     @classmethod
-    def all_closed(cls):
-        if list(cls.get_open()):
-            return False
-        return True
+    def all_closed(cls) -> bool:
+        return len(list(cls.get_open())) == 0
 
     @classmethod
-    def get_circuits(cls):
+    def get_circuits(cls) -> [CircuitBreaker]:
         return cls.circuit_breakers.values()
 
     @classmethod
-    def get(cls, name):
+    def get(cls, name) -> CircuitBreaker:
         return cls.circuit_breakers.get(name)
 
     @classmethod
-    def get_open(cls):
+    def get_open(cls) -> [CircuitBreaker]:
         for circuit in cls.get_circuits():
-            if circuit.state is STATE_OPEN:
+            if circuit.opened:
                 yield circuit
 
     @classmethod
-    def get_closed(cls):
+    def get_closed(cls) -> [CircuitBreaker]:
         for circuit in cls.get_circuits():
-            if circuit.state is not STATE_OPEN:
+            if circuit.closed:
                 yield circuit
