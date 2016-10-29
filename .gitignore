@@ -5,3 +5,4 @@ __pycache__
 .tox
 /env
 /circuitbreaker.egg-info
+.coverage
