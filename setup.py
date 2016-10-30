@@ -3,6 +3,11 @@ Python Circuit Breaker
 """
 from setuptools import find_packages, setup
 
+
+def readme():
+    with open('README.rst') as f:
+        return f.read()
+
 dependencies = []
 
 setup(
@@ -14,8 +19,8 @@ setup(
     author='Fabian Fuelling',
     author_email='pypi@fabfuel.de',
     description='Python Circuit Breaker pattern implementation',
-    long_description=__doc__,
-    packages=find_packages(exclude=['tests', 'env']),
+    long_description=readme(),
+    py_modules=['circuitbreaker'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
