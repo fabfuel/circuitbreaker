@@ -1,6 +1,9 @@
 CircuitBreaker
 --------------
 
+.. image:: https://badge.fury.io/py/circuitbreaker.svg
+    :target: https://badge.fury.io/py/circuitbreaker
+
 .. image:: https://travis-ci.org/fabfuel/circuitbreaker.svg?branch=master
     :target: https://travis-ci.org/fabfuel/circuitbreaker
 
@@ -9,7 +12,6 @@ CircuitBreaker
 
 .. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/quality-score.png?b=master
     :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
-
 
 This is an Python implementation of the "Circuit Breaker" Pattern (http://martinfowler.com/bliki/CircuitBreaker.html).
 Inspired by Michael T. Nygard's highly recommendable book *Release It!* (https://pragprog.com/book/mnee/release-it).
