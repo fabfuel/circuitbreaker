@@ -41,8 +41,8 @@ This decorator sets up a circuit breaker with the default settings. The circuit 
 - resets the failure count after every successful execution (while is is closed)
 - opens and prevents further executions after 5 subsequent failures
 - switches to half-open and allows one test-exection after 30 seconds recovery timeout
-- will close if the test-execution succeeds
-- considers all raised exception (based on class ``Exception``) as an expected failure
+- closes if the test-execution succeeded
+- considers all raised exceptions (based on class ``Exception``) as an expected failure
 - is named "external_call" - the name of the function it decorates
 
 
@@ -66,7 +66,7 @@ its ``RequestException`` class would be a great choice for the ``expected_except
 All recognized exceptions will be reraised anyway, but the goal is, to let the circuit breaker only
 recognize those exceptions which are related to the communication to your integration point.
 
-When it comes to monitoring (see #CircuitBreakerMonitor), it may lead to falsy conclusions, if a 
+When it comes to monitoring (see Monitoring_), it may lead to falsy conclusions, if a
 circuit breaker opened, due to a local ``OSError`` or ``KeyError``, etc.
 
 
@@ -82,15 +82,15 @@ The following configuration options can be adjusted via decorator parameters. Fo
 
 
 
-failure_threshold
+failure threshold
 =================
 By default, the circuit breaker opens after 5 subsequent failures. You can adjust this value via the ``failure_threshold`` parameter.
 
-recovery_timeout
+recovery timeout
 ================
-By default, the circuit breaker stays open for 30 seconds to allow the integration to recover. You can adjust this value via the ``recovery_timeout`` parameter.
+By default, the circuit breaker stays open for 30 seconds to allow the integration point to recover. You can adjust this value via the ``recovery_timeout`` parameter.
 
-expected_exception
+expected exception
 ==================
 By default, the circuit breaker listens for all exceptions which are based on the ``Exception`` class. You can adjust this via the ``expected_exception`` parameter.
 
@@ -102,7 +102,7 @@ By default, the circuit breaker name is the name of the function it decorates. Y
 Advanced Usage
 --------------
 If you apply circuit breakers to a couple of functions and you always set specific options other than the default values,
-you can subclass the ``CircuitBreaker`` and create your own circuit breaker class instead::
+you can extend the ``CircuitBreaker`` class and create your own circuit breaker subclass instead::
 
     from circuitbreaker import CircuitBreaker
     
@@ -126,6 +126,8 @@ Or via the decorator proxy::
     def external_call():
         ...
 
+
+.. _Monitoring:
 
 Monitoring
 ----------
