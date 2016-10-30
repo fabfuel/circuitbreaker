@@ -12,7 +12,7 @@ dependencies = []
 
 setup(
     name='circuitbreaker',
-    version='1.0.0',
+    version='1.0.1',
     url='https://github.com/fabfuel/circuitbreaker',
     download_url='https://github.com/fabfuel/circuitbreaker/archive/1.0.0.tar.gz',
     license='BSD',
