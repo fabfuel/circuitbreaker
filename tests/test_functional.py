@@ -26,12 +26,12 @@ def circuit_threshold_1():
     return pseudo_remote_call()
 
 
-@CircuitBreaker(failure_threshold=2, recover_timeout=1, name="threshold_2")
+@CircuitBreaker(failure_threshold=2, recovery_timeout=1, name="threshold_2")
 def circuit_threshold_2_timeout_1():
     return pseudo_remote_call()
 
 
-@CircuitBreaker(failure_threshold=3, recover_timeout=1, name="threshold_3")
+@CircuitBreaker(failure_threshold=3, recovery_timeout=1, name="threshold_3")
 def circuit_threshold_3_timeout_1():
     return pseudo_remote_call()
 
@@ -127,7 +127,7 @@ def test_circuitbreaker_recover_half_open(mock_remote: Mock):
     sleep(1)
 
     # circuit half-open -> next call will be passed through
-    assert circuitbreaker.closed
+    assert not circuitbreaker.closed
     assert circuitbreaker.open_remaining < 0
     assert circuitbreaker.state == STATE_HALF_OPEN
 
@@ -144,7 +144,7 @@ def test_circuitbreaker_recover_half_open(mock_remote: Mock):
 
 
 @patch('test_functional.pseudo_remote_call', return_value=True)
-def test_circuitbreaker_reopens_after_successful_call(mock_remote: Mock):
+def test_circuitbreaker_reopens_after_successful_calls(mock_remote: Mock):
     circuitbreaker = CircuitBreakerMonitor.get('threshold_2')
 
     assert str(circuitbreaker) == 'threshold_2'
@@ -198,7 +198,7 @@ def test_circuitbreaker_reopens_after_successful_call(mock_remote: Mock):
     sleep(1)
 
     # circuit half-open -> next call will be passed through
-    assert circuitbreaker.closed
+    assert not circuitbreaker.closed
     assert circuitbreaker.failure_count == 2
     assert circuitbreaker.open_remaining < 0
     assert circuitbreaker.state == STATE_HALF_OPEN
@@ -215,23 +215,3 @@ def test_circuitbreaker_reopens_after_successful_call(mock_remote: Mock):
     assert circuit_threshold_2_timeout_1()
     assert circuit_threshold_2_timeout_1()
     assert circuit_threshold_2_timeout_1()
-
-
-
-
-
-
-# @CircuitBreaker(failure_threshold=2, recover_timeout=4)
-# def external_call(call_id):
-#     if call_id in (2, 3, 6, 7, 10, 12, 15):
-#         raise ConnectionError('Connection refused')
-#     return 'SUCCESS'
-#
-# for i in range(0, 20):
-#     try:
-#         print('CALL: %d' % i)
-#         print(' ## %s ' % external_call(i))
-#     except Exception as e:
-#         print('  \__ %s ' % e)
-#
-#     sleep(0.5)
