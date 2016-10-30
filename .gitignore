@@ -6,3 +6,5 @@ __pycache__
 /env
 /circuitbreaker.egg-info
 .coverage
+/dist
+/build
