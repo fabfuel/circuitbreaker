@@ -40,7 +40,7 @@ This decorator sets up a circuit breaker with the default settings. The circuit 
 - monitors the function execution and counts failures
 - resets the failure count after every successful execution (while is is closed)
 - opens and prevents further executions after 5 subsequent failures
-- switches to half-open and allows one test-exection after 30 seconds recovery timeout
+- switches to half-open and allows one test-execution after 30 seconds recovery timeout
 - closes if the test-execution succeeded
 - considers all raised exceptions (based on class ``Exception``) as an expected failure
 - is named "external_call" - the name of the function it decorates
