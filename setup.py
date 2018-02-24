@@ -1,20 +1,21 @@
 """
 Python Circuit Breaker
 """
-from setuptools import find_packages, setup
+from setuptools import setup
 
 
 def readme():
     with open('README.rst') as f:
         return f.read()
 
+
 dependencies = []
 
 setup(
     name='circuitbreaker',
-    version='1.0.1',
+    version='1.0.2',
     url='https://github.com/fabfuel/circuitbreaker',
-    download_url='https://github.com/fabfuel/circuitbreaker/archive/1.0.0.tar.gz',
+    download_url='https://github.com/fabfuel/circuitbreaker/archive/1.0.2.tar.gz',
     license='BSD',
     author='Fabian Fuelling',
     author_email='pypi@fabfuel.de',
@@ -32,7 +33,6 @@ setup(
         'Operating System :: MacOS',
         'Operating System :: Unix',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
     ]
 )
