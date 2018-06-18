@@ -18,7 +18,7 @@ def circuit_success():
 
 @CircuitBreaker(failure_threshold=1, name="circuit_failure")
 def circuit_failure():
-    raise ConnectionError()
+    raise IOError()
 
 
 @CircuitBreaker(failure_threshold=1, name="threshold_1")
@@ -46,7 +46,7 @@ def test_circuitbreaker_monitor():
     assert len(list(CircuitBreakerMonitor.get_closed())) == 5
     assert len(list(CircuitBreakerMonitor.get_open())) == 0
 
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_failure()
 
     assert CircuitBreakerMonitor.all_closed() is False
@@ -56,13 +56,14 @@ def test_circuitbreaker_monitor():
 
 
 @patch('test_functional.pseudo_remote_call', return_value=True)
-def test_threshold_hit_prevents_consequent_calls(mock_remote: Mock):
-    mock_remote.side_effect = ConnectionError('Connection refused')
+def test_threshold_hit_prevents_consequent_calls(mock_remote):
+    # type: (Mock) -> None
+    mock_remote.side_effect = IOError('Connection refused')
     circuitbreaker = CircuitBreakerMonitor.get('threshold_1')
 
     assert circuitbreaker.closed
 
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_threshold_1()
 
     assert circuitbreaker.opened
@@ -74,7 +75,8 @@ def test_threshold_hit_prevents_consequent_calls(mock_remote: Mock):
 
 
 @patch('test_functional.pseudo_remote_call', return_value=True)
-def test_circuitbreaker_recover_half_open(mock_remote: Mock):
+def test_circuitbreaker_recover_half_open(mock_remote):
+    # type: (Mock) -> None
     circuitbreaker = CircuitBreakerMonitor.get('threshold_3')
 
     # initial state: closed
@@ -85,22 +87,22 @@ def test_circuitbreaker_recover_half_open(mock_remote: Mock):
     assert circuit_threshold_3_timeout_1()
 
     # from now all subsequent calls will fail
-    mock_remote.side_effect = ConnectionError('Connection refused')
+    mock_remote.side_effect = IOError('Connection refused')
 
     # 1. failed call -> original exception
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_threshold_3_timeout_1()
     assert circuitbreaker.closed
     assert circuitbreaker.failure_count == 1
 
     # 2. failed call -> original exception
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_threshold_3_timeout_1()
     assert circuitbreaker.closed
     assert circuitbreaker.failure_count == 2
 
     # 3. failed call -> original exception
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_threshold_3_timeout_1()
 
     # Circuit breaker opens, threshold has been reached
@@ -132,7 +134,7 @@ def test_circuitbreaker_recover_half_open(mock_remote: Mock):
     assert circuitbreaker.state == STATE_HALF_OPEN
 
     # State half-open -> function is executed -> original exception
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_threshold_3_timeout_1()
     assert circuitbreaker.opened
     assert circuitbreaker.failure_count == 4
@@ -144,7 +146,8 @@ def test_circuitbreaker_recover_half_open(mock_remote: Mock):
 
 
 @patch('test_functional.pseudo_remote_call', return_value=True)
-def test_circuitbreaker_reopens_after_successful_calls(mock_remote: Mock):
+def test_circuitbreaker_reopens_after_successful_calls(mock_remote):
+    # type: (Mock) -> None
     circuitbreaker = CircuitBreakerMonitor.get('threshold_2')
 
     assert str(circuitbreaker) == 'threshold_2'
@@ -158,16 +161,16 @@ def test_circuitbreaker_reopens_after_successful_calls(mock_remote: Mock):
     assert circuit_threshold_2_timeout_1()
 
     # from now all subsequent calls will fail
-    mock_remote.side_effect = ConnectionError('Connection refused')
+    mock_remote.side_effect = IOError('Connection refused')
 
     # 1. failed call -> original exception
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_threshold_2_timeout_1()
     assert circuitbreaker.closed
     assert circuitbreaker.failure_count == 1
 
     # 2. failed call -> original exception
-    with raises(ConnectionError):
+    with raises(IOError):
         circuit_threshold_2_timeout_1()
 
     # Circuit breaker opens, threshold has been reached
