@@ -1,5 +1,12 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
 from functools import wraps
 from datetime import datetime, timedelta
+from typing import AnyStr, Iterable
 
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
@@ -125,7 +132,7 @@ class CircuitBreakerError(Exception):
         :param kwargs:
         :return:
         """
-        super().__init__(*args, **kwargs)
+        super(CircuitBreakerError, self).__init__(*args, **kwargs)
         self._circuit_breaker = circuit_breaker
 
     def __str__(self, *args, **kwargs):
@@ -145,25 +152,30 @@ class CircuitBreakerMonitor(object):
         cls.circuit_breakers[circuit_breaker.name] = circuit_breaker
 
     @classmethod
-    def all_closed(cls) -> bool:
+    def all_closed(cls):
+        # type: () -> bool
         return len(list(cls.get_open())) == 0
 
     @classmethod
-    def get_circuits(cls) -> [CircuitBreaker]:
+    def get_circuits(cls):
+        # type: () -> Iterable[CircuitBreaker]
         return cls.circuit_breakers.values()
 
     @classmethod
-    def get(cls, name) -> CircuitBreaker:
+    def get(cls, name):
+        # type: (AnyStr) -> CircuitBreaker
         return cls.circuit_breakers.get(name)
 
     @classmethod
-    def get_open(cls) -> [CircuitBreaker]:
+    def get_open(cls):
+        # type: () -> Iterable[CircuitBreaker]
         for circuit in cls.get_circuits():
             if circuit.opened:
                 yield circuit
 
     @classmethod
-    def get_closed(cls) -> [CircuitBreaker]:
+    def get_closed(cls):
+        # type: () -> Iterable[CircuitBreaker]
         for circuit in cls.get_circuits():
             if circuit.closed:
                 yield circuit

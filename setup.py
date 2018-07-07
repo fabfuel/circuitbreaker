@@ -9,13 +9,13 @@ def readme():
         return f.read()
 
 
-dependencies = []
+dependencies = ['typing']
 
 setup(
     name='circuitbreaker',
-    version='1.0.2',
+    version='1.1.0',
     url='https://github.com/fabfuel/circuitbreaker',
-    download_url='https://github.com/fabfuel/circuitbreaker/archive/1.0.2.tar.gz',
+    download_url='https://github.com/fabfuel/circuitbreaker/archive/1.1.0.tar.gz',
     license='BSD',
     author='Fabian Fuelling',
     author_email='pypi@fabfuel.de',
@@ -33,6 +33,7 @@ setup(
         'Operating System :: MacOS',
         'Operating System :: Unix',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
     ]
 )
