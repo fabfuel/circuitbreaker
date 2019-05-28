@@ -23,6 +23,7 @@ class CircuitBreaker(object):
                  recovery_timeout=None,
                  expected_exception=None,
                  name=None):
+        self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
@@ -59,7 +60,8 @@ class CircuitBreaker(object):
             raise CircuitBreakerError(self)
         try:
             result = func(*args, **kwargs)
-        except self._expected_exception:
+        except self._expected_exception as e:
+            self._last_failure = e
             self.__call_failed()
             raise
 
@@ -71,6 +73,7 @@ class CircuitBreaker(object):
         Close circuit after successful execution and reset failure count
         """
         self._state = STATE_CLOSED
+        self._last_failure = None
         self._failure_count = 0
 
     def __call_failed(self):
