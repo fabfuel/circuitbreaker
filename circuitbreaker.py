@@ -123,6 +123,10 @@ class CircuitBreaker(object):
     def name(self):
         return self._name
 
+    @property
+    def last_failure(self):
+        return self._last_failure
+
     def __str__(self, *args, **kwargs):
         return self._name
 
@@ -139,11 +143,12 @@ class CircuitBreakerError(Exception):
         self._circuit_breaker = circuit_breaker
 
     def __str__(self, *args, **kwargs):
-        return 'Circuit "%s" OPEN until %s (%d failures, %d sec remaining)' % (
+        return 'Circuit "%s" OPEN until %s (%d failures, %d sec remaining) (last_failure: %r)' % (
             self._circuit_breaker.name,
             self._circuit_breaker.open_until,
             self._circuit_breaker.failure_count,
-            round(self._circuit_breaker.open_remaining)
+            round(self._circuit_breaker.open_remaining),
+            self._circuit_breaker.last_failure,
         )
 
 
