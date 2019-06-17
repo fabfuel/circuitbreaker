@@ -5,12 +5,21 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from functools import wraps
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import AnyStr, Iterable
 
-STATE_CLOSED = 'closed'
-STATE_OPEN = 'open'
-STATE_HALF_OPEN = 'half_open'
+import ctypes
+import multiprocessing
+
+STATE_CLOSED = b'closed'
+STATE_OPEN = b'open'
+STATE_HALF_OPEN = b'half-open'
+
+EPOCH = datetime.utcfromtimestamp(0)
+
+
+def unix_time_seconds(dt):
+    return (dt - EPOCH).total_seconds()
 
 
 class CircuitBreaker(object):
@@ -23,13 +32,22 @@ class CircuitBreaker(object):
                  recovery_timeout=None,
                  expected_exception=None,
                  name=None):
-        self._failure_count = 0
+        """
+        
+        :param failure_threshold: The minimum number of failures before opening circuit
+        :param recovery_timeout: The number of seconds to elapse before circuit 
+                                 can be considered in HALF_OPEN state
+        :param expected_exception: Any exception expected from the external network call
+        :param name: The name of the circuit breaker
+        """
+        self._lock = multiprocessing.RLock()
+        self._failure_count = multiprocessing.Value(ctypes.c_int, 0, lock=self._lock)
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
         self._expected_exception = expected_exception or self.EXPECTED_EXCEPTION
         self._name = name
-        self._state = STATE_CLOSED
-        self._opened = datetime.utcnow()
+        self._state = multiprocessing.Value(ctypes.c_char_p, STATE_CLOSED, lock=self._lock)
+        self._opened = multiprocessing.Value(ctypes.c_double, unix_time_seconds(datetime.utcnow()), lock=self._lock)
 
     def __call__(self, wrapped):
         return self.decorate(wrapped)
@@ -70,43 +88,46 @@ class CircuitBreaker(object):
         """
         Close circuit after successful execution and reset failure count
         """
-        self._state = STATE_CLOSED
-        self._failure_count = 0
+        with self._lock:
+            self._state.value = STATE_CLOSED
+            self._failure_count.value = 0
 
     def __call_failed(self):
         """
         Count failure and open circuit, if threshold has been reached
         """
-        self._failure_count += 1
-        if self._failure_count >= self._failure_threshold:
-            self._state = STATE_OPEN
-            self._opened = datetime.utcnow()
+        with self._lock:
+            self._failure_count.value += 1
+            if self._failure_count.value >= self._failure_threshold:
+                    self._state.value = STATE_OPEN
+                    self._opened.value = unix_time_seconds(datetime.utcnow())
 
     @property
     def state(self):
-        if self._state == STATE_OPEN and self.open_remaining <= 0:
+        if self._state.value == STATE_OPEN and self.open_remaining <= 0:
             return STATE_HALF_OPEN
-        return self._state
+
+        return self._state.value
 
     @property
     def open_until(self):
         """
-        The datetime, when the circuit breaker will try to recover
-        :return: datetime
+        The epoch of when the circuit breaker will try to recover
+        :return: epoch float
         """
-        return self._opened + timedelta(seconds=self._recovery_timeout)
+        return self._opened.value + self._recovery_timeout
 
     @property
     def open_remaining(self):
         """
         Number of seconds remaining, the circuit breaker stays in OPEN state
-        :return: int
+        :return: float
         """
-        return (self.open_until - datetime.utcnow()).total_seconds()
+        return self.open_until - unix_time_seconds(datetime.utcnow())
 
     @property
     def failure_count(self):
-        return self._failure_count
+        return self._failure_count.value
 
     @property
     def closed(self):
