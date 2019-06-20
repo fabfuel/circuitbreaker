@@ -24,6 +24,16 @@ The project is available on PyPI. Simply run::
 
     $ pip install circuitbreaker
 
+Why not circuitfixer ? 
+----------------------
+
+*Circuitfixer* (https://github.com/postmates/circuitfixer) is not intuitive for first time users. It uses
+the idea of an exponential moving average to keep track of when the circuit breaker should close. In addition, each process 
+in the same pod which uses circuitfixer has an independent state. This means that the states will be eventually consistent. 
+
+However, when you use circuitbreaker, the state is shared across processes within the same pod. In addition, the semantics
+to decide when to open / close a circuit breaker has been simplified to the number of consecutive failures incurred. Continue
+reading below for more details on how to configure a circuitbreaker.  
 
 Usage
 -----
