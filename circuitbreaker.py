@@ -11,6 +11,10 @@ from typing import AnyStr, Iterable
 import ctypes
 import multiprocessing
 
+from circuitbreaker.stats import (
+    record_circuit_breaker_state, record_circuit_breaker_success_total,
+    record_circuit_breaker_failure_total)
+
 STATE_CLOSED = b'closed'
 STATE_OPEN = b'open'
 STATE_HALF_OPEN = b'half-open'
@@ -49,6 +53,7 @@ class CircuitBreaker(object):
         self._state = multiprocessing.Value(ctypes.c_char_p, STATE_CLOSED, lock=self._lock)
         self._opened = multiprocessing.Value(ctypes.c_double, unix_time_seconds(datetime.utcnow()), lock=self._lock)
 
+
     def __call__(self, wrapped):
         return self.decorate(wrapped)
 
@@ -73,21 +78,30 @@ class CircuitBreaker(object):
         rules on success or failure
         :param func: Decorated function
         """
-        if self.opened:
-            raise CircuitBreakerError(self)
         try:
-            result = func(*args, **kwargs)
-        except self._expected_exception:
-            self.__call_failed()
-            raise
+            if self.opened:
+                record_circuit_breaker_failure_total(self._name, self._state.value)
+                raise CircuitBreakerError(self)
+            try:
+                result = func(*args, **kwargs)
+            except self._expected_exception:
+                self.__call_failed()
+                raise
 
-        self.__call_succeeded()
-        return result
+            self.__call_succeeded()
+            return result
+        finally:
+            # Always record the last known state of the circuit breaker
+            record_circuit_breaker_state(self._name, self.state)
 
     def __call_succeeded(self):
         """
         Close circuit after successful execution and reset failure count
         """
+        # Record the state of circuit breaker when a successful remote call
+        # took place
+        record_circuit_breaker_success_total(self._name, self._state.value)
+
         with self._lock:
             self._state.value = STATE_CLOSED
             self._failure_count.value = 0
@@ -96,6 +110,10 @@ class CircuitBreaker(object):
         """
         Count failure and open circuit, if threshold has been reached
         """
+        # Record the state of circuit breaker when an unsuccessful remote call
+        # took place
+        record_circuit_breaker_failure_total(self._name, self._state.value)
+
         with self._lock:
             self._failure_count.value += 1
             if self._failure_count.value >= self._failure_threshold:
