@@ -13,7 +13,7 @@ CircuitBreaker
 .. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/quality-score.png?b=master
     :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
 
-This is an Python implementation of the "Circuit Breaker" Pattern (http://martinfowler.com/bliki/CircuitBreaker.html).
+This is a Python implementation of the "Circuit Breaker" Pattern (http://martinfowler.com/bliki/CircuitBreaker.html).
 Inspired by Michael T. Nygard's highly recommendable book *Release It!* (https://pragprog.com/book/mnee/release-it).
 
 
@@ -40,7 +40,7 @@ This is the simplest example. Just decorate a function with the ``@circuit`` dec
 This decorator sets up a circuit breaker with the default settings. The circuit breaker:
 
 - monitors the function execution and counts failures
-- resets the failure count after every successful execution (while is is closed)
+- resets the failure count after every successful execution (while it is closed)
 - opens and prevents further executions after 5 subsequent failures
 - switches to half-open and allows one test-execution after 30 seconds recovery timeout
 - closes if the test-execution succeeded
@@ -50,7 +50,7 @@ This decorator sets up a circuit breaker with the default settings. The circuit 
 
 What does *failure* mean?
 =========================
-A *failure* is a raised exception, which was not cought during the function call. 
+A *failure* is a raised exception, which was not caught during the function call.
 By default, the circuit breaker listens for all exceptions based on the class ``Exception``. 
 That means, that all exceptions raised during the function call are considered as an 
 "expected failure" and will increase the failure count.
@@ -65,7 +65,7 @@ end is unavailable. So e.g. if there is an ``ConnectionError`` or a request ``Ti
 If you are e.g. using the requests library (http://docs.python-requests.org/) for making HTTP calls, 
 its ``RequestException`` class would be a great choice for the ``expected_exception`` parameter.
 
-All recognized exceptions will be reraised anyway, but the goal is, to let the circuit breaker only
+All recognized exceptions will be re-raised anyway, but the goal is, to let the circuit breaker only
 recognize those exceptions which are related to the communication to your integration point.
 
 When it comes to monitoring (see Monitoring_), it may lead to falsy conclusions, if a
@@ -86,19 +86,21 @@ The following configuration options can be adjusted via decorator parameters. Fo
 
 failure threshold
 =================
-By default, the circuit breaker opens after 5 subsequent failures. You can adjust this value via the ``failure_threshold`` parameter.
+By default, the circuit breaker opens after 5 subsequent failures. You can adjust this value with the ``failure_threshold`` parameter.
 
 recovery timeout
 ================
-By default, the circuit breaker stays open for 30 seconds to allow the integration point to recover. You can adjust this value via the ``recovery_timeout`` parameter.
+By default, the circuit breaker stays open for 30 seconds to allow the integration point to recover.
+You can adjust this value with the ``recovery_timeout`` parameter.
 
 expected exception
 ==================
-By default, the circuit breaker listens for all exceptions which are based on the ``Exception`` class. You can adjust this via the ``expected_exception`` parameter.
+By default, the circuit breaker listens for all exceptions which are based on the ``Exception`` class.
+You can adjust this with the ``expected_exception`` parameter. It can be either an exception class or a tuple of exception classes.
 
 name
 ====
-By default, the circuit breaker name is the name of the function it decorates. You can adjust the name via parameter ``name``.
+By default, the circuit breaker name is the name of the function it decorates. You can adjust the name with parameter ``name``.
 
 
 Advanced Usage
