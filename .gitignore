@@ -4,6 +4,7 @@ __pycache__
 .cache
 .tox
 /env
+/venv
 /circuitbreaker.egg-info
 .coverage
 /dist
