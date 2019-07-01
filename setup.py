@@ -16,7 +16,7 @@ setup(
     version='1.2.0',
     url='https://github.com/fabfuel/circuitbreaker',
     download_url='https://github.com/fabfuel/circuitbreaker/archive/1.2.0.tar.gz',
-    license='BSD',
+    license='BSD-3-Clause',
     author='Fabian Fuelling',
     author_email='pypi@fabfuel.de',
     description='Python Circuit Breaker pattern implementation',
