@@ -44,6 +44,17 @@ def test_circuitbreaker_should_clear_last_exception_on_success_call():
     assert cb.last_failure is None
 
 
+def test_circuitbreaker_should_call_fallback_function_if_open():
+    fallback = Mock(return_value=True)
+
+    func = Mock(return_value=False)
+
+    CircuitBreaker.opened = lambda self: True
+    
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
+    cb.call(func)
+    fallback.assert_called_once_with()
+
 @patch('circuitbreaker.CircuitBreaker.decorate')
 def test_circuit_decorator_without_args(circuitbreaker_mock):
     function = lambda: True
@@ -54,10 +65,12 @@ def test_circuit_decorator_without_args(circuitbreaker_mock):
 @patch('circuitbreaker.CircuitBreaker.__init__')
 def test_circuit_decorator_with_args(circuitbreaker_mock):
     circuitbreaker_mock.return_value = None
-    circuit(10, 20, KeyError, 'foobar')
+    function_fallback = lambda: True
+    circuit(10, 20, KeyError, 'foobar', function_fallback)
     circuitbreaker_mock.assert_called_once_with(
         expected_exception=KeyError,
         failure_threshold=10,
         recovery_timeout=20,
-        name='foobar'
+        name='foobar',
+        fallback_function=function_fallback
     )

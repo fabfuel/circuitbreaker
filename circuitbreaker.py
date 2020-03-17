@@ -17,17 +17,20 @@ class CircuitBreaker(object):
     FAILURE_THRESHOLD = 5
     RECOVERY_TIMEOUT = 30
     EXPECTED_EXCEPTION = Exception
+    FALLBACK_FUNCTION = None
 
     def __init__(self,
                  failure_threshold=None,
                  recovery_timeout=None,
                  expected_exception=None,
-                 name=None):
+                 name=None,
+                 fallback_function=None):
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
         self._expected_exception = expected_exception or self.EXPECTED_EXCEPTION
+        self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
         self._state = STATE_CLOSED
         self._opened = datetime.utcnow()
@@ -57,7 +60,10 @@ class CircuitBreaker(object):
         :param func: Decorated function
         """
         if self.opened:
-            raise CircuitBreakerError(self)
+            if self.fallback_function:
+                self.fallback_function()
+            else:
+                raise CircuitBreakerError(self)
         try:
             result = func(*args, **kwargs)
         except self._expected_exception as e:
@@ -127,6 +133,10 @@ class CircuitBreaker(object):
     def last_failure(self):
         return self._last_failure
 
+    @property
+    def fallback_function(self):
+        return self._fallback_function
+
     def __str__(self, *args, **kwargs):
         return self._name
 
@@ -193,6 +203,7 @@ def circuit(failure_threshold=None,
             recovery_timeout=None,
             expected_exception=None,
             name=None,
+            fallback_function=None,
             cls=CircuitBreaker):
 
     # if the decorator is used without parameters, the
@@ -204,4 +215,5 @@ def circuit(failure_threshold=None,
             failure_threshold=failure_threshold,
             recovery_timeout=recovery_timeout,
             expected_exception=expected_exception,
-            name=name)
+            name=name,
+            fallback_function=fallback_function)
