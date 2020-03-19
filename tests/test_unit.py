@@ -70,7 +70,7 @@ def test_circuitbreaker_call_fallback_function_with_parameters():
 
     # check args and kwargs are getting correctly to fallback function
     
-    fallback.assert_called_once_with(('test2',), {'test': 'test'})
+    fallback.assert_called_once_with('test2', test='test')
 
 @patch('circuitbreaker.CircuitBreaker.decorate')
 def test_circuit_decorator_without_args(circuitbreaker_mock):
