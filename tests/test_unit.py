@@ -55,16 +55,17 @@ def test_circuitbreaker_should_call_fallback_function_if_open():
     cb.call(func)
     fallback.assert_called_once()
 
+def mocked_function(*args, **kwargs):
+    pass
+
 def test_circuitbreaker_call_fallback_function_with_parameters():
     fallback = Mock(return_value=True)
-
-    func = Mock(return_value=False)
 
     cb = circuit(name='with_fallback', fallback_function=fallback)
 
     # mock opened prop to see if fallback is called with correct parameters.
     cb.opened = lambda self: True
-    func_decorated = cb.decorate(func)
+    func_decorated = cb.decorate(mocked_function)
 
     func_decorated('test2',test='test')
 
