@@ -44,6 +44,35 @@ def test_circuitbreaker_should_clear_last_exception_on_success_call():
     assert cb.last_failure is None
 
 
+def test_circuitbreaker_should_call_fallback_function_if_open():
+    fallback = Mock(return_value=True)
+
+    func = Mock(return_value=False)
+
+    CircuitBreaker.opened = lambda self: True
+    
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
+    cb.call(func)
+    fallback.assert_called_once_with()
+
+def mocked_function(*args, **kwargs):
+    pass
+
+def test_circuitbreaker_call_fallback_function_with_parameters():
+    fallback = Mock(return_value=True)
+
+    cb = circuit(name='with_fallback', fallback_function=fallback)
+
+    # mock opened prop to see if fallback is called with correct parameters.
+    cb.opened = lambda self: True
+    func_decorated = cb.decorate(mocked_function)
+
+    func_decorated('test2',test='test')
+
+    # check args and kwargs are getting correctly to fallback function
+    
+    fallback.assert_called_once_with('test2', test='test')
+
 @patch('circuitbreaker.CircuitBreaker.decorate')
 def test_circuit_decorator_without_args(circuitbreaker_mock):
     function = lambda: True
@@ -54,10 +83,12 @@ def test_circuit_decorator_without_args(circuitbreaker_mock):
 @patch('circuitbreaker.CircuitBreaker.__init__')
 def test_circuit_decorator_with_args(circuitbreaker_mock):
     circuitbreaker_mock.return_value = None
-    circuit(10, 20, KeyError, 'foobar')
+    function_fallback = lambda: True
+    circuit(10, 20, KeyError, 'foobar', function_fallback)
     circuitbreaker_mock.assert_called_once_with(
         expected_exception=KeyError,
         failure_threshold=10,
         recovery_timeout=20,
-        name='foobar'
+        name='foobar',
+        fallback_function=function_fallback
     )
