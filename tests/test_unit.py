@@ -53,7 +53,7 @@ def test_circuitbreaker_should_call_fallback_function_if_open():
     
     cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
     cb.call(func)
-    fallback.assert_called_once()
+    fallback.assert_called_once_with()
 
 def mocked_function(*args, **kwargs):
     pass
