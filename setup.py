@@ -9,14 +9,14 @@ def readme():
         return f.read()
 
 
-dependencies = ['typing']
+dependencies = ["typing; python_version < '3.5'"]
 
 setup(
     name='circuitbreaker',
-    version='1.2.0',
+    version='1.3.0',
     url='https://github.com/fabfuel/circuitbreaker',
-    download_url='https://github.com/fabfuel/circuitbreaker/archive/1.2.0.tar.gz',
-    license='BSD',
+    download_url='https://github.com/fabfuel/circuitbreaker/archive/1.3.0.tar.gz',
+    license='BSD-3-Clause',
     author='Fabian Fuelling',
     author_email='pypi@fabfuel.de',
     description='Python Circuit Breaker pattern implementation',
