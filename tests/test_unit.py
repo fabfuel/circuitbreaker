@@ -55,6 +55,17 @@ def test_circuitbreaker_should_call_fallback_function_if_open():
     cb.call(func)
     fallback.assert_called_once_with()
 
+def test_circuitbreaker_should_not_call_function_if_open():
+    fallback = Mock(return_value=True)
+
+    func = Mock(return_value=False)
+
+    CircuitBreaker.opened = lambda self: True
+    
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
+    cb.call(func)
+    assert not func.called
+
 def mocked_function(*args, **kwargs):
     pass
 
