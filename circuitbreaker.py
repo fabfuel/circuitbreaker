@@ -61,10 +61,8 @@ class CircuitBreaker(object):
         """
         if self.opened:
             if self.fallback_function:
-                self.fallback_function(*args, **kwargs)
-                return None
-            else:
-                raise CircuitBreakerError(self)
+                return self.fallback_function(*args, **kwargs)
+            raise CircuitBreakerError(self)
         try:
             result = func(*args, **kwargs)
         except self._expected_exception as e:
