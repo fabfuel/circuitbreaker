@@ -62,6 +62,7 @@ class CircuitBreaker(object):
         if self.opened:
             if self.fallback_function:
                 self.fallback_function(*args, **kwargs)
+                return None
             else:
                 raise CircuitBreakerError(self)
         try:
