@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 from functools import wraps
 from datetime import datetime, timedelta
+from inspect import iscoroutinefunction, isgeneratorfunction
 from typing import AnyStr, Iterable
 
 STATE_CLOSED = 'closed'
@@ -59,7 +60,12 @@ class CircuitBreaker(object):
 
         CircuitBreakerMonitor.register(self)
 
-        call = self.call
+        if iscoroutinefunction(function):
+            call = self.call_async
+        elif isgeneratorfunction(function):
+            call = self.call_generator
+        else:
+            call = self.call
 
         @wraps(function)
         def wrapper(*args, **kwargs):
@@ -68,7 +74,6 @@ class CircuitBreaker(object):
                     return self.fallback_function(*args, **kwargs)
                 raise CircuitBreakerError(self)
             return call(function, *args, **kwargs)
-
         return wrapper
 
     def call(self, func, *args, **kwargs):
@@ -80,6 +85,23 @@ class CircuitBreaker(object):
         with self:
             return func(*args, **kwargs)
 
+    def call_generator(self, func, *args, **kwargs):
+        """
+        Calls the decorated generator function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated genrator function
+        """
+        with self:
+            return (yield from func(*args, **kwargs))
+
+    async def call_async(self, func, *args, **kwargs):
+        """
+        Calls the decorated async function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated async function
+        """
+        with self:
+            return await func(*args, **kwargs)
 
     def __call_succeeded(self):
         """
