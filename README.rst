@@ -78,7 +78,7 @@ The following configuration options can be adjusted via decorator parameters. Fo
 
     from circuitbreaker import circuit
     
-    @circuit(failure_threshold=10, expected_exception=ConnectionError)
+    @circuit(failure_threshold=10, expected_exception=ConnectionError, fail_fast=False)
     def external_call():
         ...
 
@@ -102,6 +102,11 @@ name
 ====
 By default, the circuit breaker name is the name of the function it decorates. You can adjust the name with parameter ``name``.
 
+fail fast
+=========
+By default, the circuit breaker fails fast, meaning it calls the fallback function only when the circuit is open.
+You can adjust this with the ``fail_fast`` parameter. Setting it to ``False`` will call the fallback function whenever an exception is raised by decorated function.
+
 
 Advanced Usage
 --------------
@@ -114,6 +119,7 @@ you can extend the ``CircuitBreaker`` class and create your own circuit breaker 
         FAILURE_THRESHOLD = 10
         RECOVERY_TIMEOUT = 60
         EXPECTED_EXCEPTION = RequestException
+        FAIL_FAST = False
         
         
 Now you have two options to apply your circuit breaker to a function. As an Object directly::

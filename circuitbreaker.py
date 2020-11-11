@@ -18,19 +18,22 @@ class CircuitBreaker(object):
     RECOVERY_TIMEOUT = 30
     EXPECTED_EXCEPTION = Exception
     FALLBACK_FUNCTION = None
+    FAIL_FAST = True
 
     def __init__(self,
                  failure_threshold=None,
                  recovery_timeout=None,
                  expected_exception=None,
                  name=None,
-                 fallback_function=None):
+                 fallback_function=None,
+                 fail_fast=None):
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
         self._expected_exception = expected_exception or self.EXPECTED_EXCEPTION
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
+        self._fail_fast = fail_fast or self.FAIL_FAST
         self._name = name
         self._state = STATE_CLOSED
         self._opened = datetime.utcnow()
@@ -68,6 +71,8 @@ class CircuitBreaker(object):
         except self._expected_exception as e:
             self._last_failure = e
             self.__call_failed()
+            if self.fallback_function and not self.fail_fast:
+                return self.fallback_function(*args, **kwargs)
             raise
 
         self.__call_succeeded()
@@ -136,6 +141,10 @@ class CircuitBreaker(object):
     def fallback_function(self):
         return self._fallback_function
 
+    @property
+    def fail_fast(self):
+        return self._fail_fast
+
     def __str__(self, *args, **kwargs):
         return self._name
 
@@ -203,6 +212,7 @@ def circuit(failure_threshold=None,
             expected_exception=None,
             name=None,
             fallback_function=None,
+            fail_fast=None,
             cls=CircuitBreaker):
 
     # if the decorator is used without parameters, the
@@ -215,4 +225,5 @@ def circuit(failure_threshold=None,
             recovery_timeout=recovery_timeout,
             expected_exception=expected_exception,
             name=name,
-            fallback_function=fallback_function)
+            fallback_function=fallback_function,
+            fail_fast=fail_fast)
