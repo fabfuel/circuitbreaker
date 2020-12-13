@@ -47,23 +47,27 @@ def test_circuitbreaker_should_clear_last_exception_on_success_call():
 def test_circuitbreaker_should_call_fallback_function_if_open():
     fallback = Mock(return_value=True)
 
-    func = Mock(return_value=False)
+    func = Mock(return_value=False, __name__="Mock") # attribute __name__ required for 2.7 compat with functools.wraps
 
     CircuitBreaker.opened = lambda self: True
     
     cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    cb.call(func)
+    decorated_func = cb.decorate(func)
+
+    decorated_func()
     fallback.assert_called_once_with()
 
 def test_circuitbreaker_should_not_call_function_if_open():
     fallback = Mock(return_value=True)
 
-    func = Mock(return_value=False)
+    func = Mock(return_value=False, __name__="Mock") # attribute __name__ required for 2.7 compat with functools.wraps
 
     CircuitBreaker.opened = lambda self: True
     
     cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    assert cb.call(func) == fallback.return_value
+    decorated_func = cb.decorate(func)
+
+    assert decorated_func() == fallback.return_value
     assert not func.called
     
 
