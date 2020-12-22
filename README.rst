@@ -102,6 +102,11 @@ name
 ====
 By default, the circuit breaker name is the name of the function it decorates. You can adjust the name with parameter ``name``.
 
+fallback function
+=================
+By default, the circuit breaker will raise a ``CircuitBreaker`` exception when the circuit is opened.
+You can instead specify a function to be called when the circuit is opened. This function can be specified with the
+``fallback_function`` parameter and will be called with the same parameters as the decorated function would be.
 
 Advanced Usage
 --------------
