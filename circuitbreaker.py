@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 from functools import wraps
 from datetime import datetime, timedelta
+from inspect import isgeneratorfunction
 from typing import AnyStr, Iterable
 
 STATE_CLOSED = 'closed'
@@ -38,6 +39,18 @@ class CircuitBreaker(object):
     def __call__(self, wrapped):
         return self.decorate(wrapped)
 
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type and issubclass(exc_type, self._expected_exception):
+            # exception was raised and is our concern
+            self._last_failure = exc_value
+            self.__call_failed()
+        else:
+            self.__call_succeeded()
+        return False  # return False to raise exception if any
+
     def decorate(self, function):
         """
         Applies the circuit breaker to a function
@@ -47,9 +60,18 @@ class CircuitBreaker(object):
 
         CircuitBreakerMonitor.register(self)
 
+        if isgeneratorfunction(function):
+            call = self.call_generator
+        else:
+            call = self.call
+
         @wraps(function)
         def wrapper(*args, **kwargs):
-            return self.call(function, *args, **kwargs)
+            if self.opened:
+                if self.fallback_function:
+                    return self.fallback_function(*args, **kwargs)
+                raise CircuitBreakerError(self)
+            return call(function, *args, **kwargs)
 
         return wrapper
 
@@ -59,19 +81,18 @@ class CircuitBreaker(object):
         rules on success or failure
         :param func: Decorated function
         """
-        if self.opened:
-            if self.fallback_function:
-                return self.fallback_function(*args, **kwargs)
-            raise CircuitBreakerError(self)
-        try:
-            result = func(*args, **kwargs)
-        except self._expected_exception as e:
-            self._last_failure = e
-            self.__call_failed()
-            raise
+        with self:
+            return func(*args, **kwargs)
 
-        self.__call_succeeded()
-        return result
+    def call_generator(self, func, *args, **kwargs):
+        """
+        Calls the decorated generator function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated genrator function
+        """
+        with self:
+            for el in func(*args, **kwargs):
+                yield el
 
     def __call_succeeded(self):
         """
