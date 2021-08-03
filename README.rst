@@ -4,8 +4,8 @@ CircuitBreaker
 .. image:: https://badge.fury.io/py/circuitbreaker.svg
     :target: https://badge.fury.io/py/circuitbreaker
 
-.. image:: https://travis-ci.org/fabfuel/circuitbreaker.svg?branch=master
-    :target: https://travis-ci.org/fabfuel/circuitbreaker
+.. image:: https://travis-ci.com/fabfuel/circuitbreaker.svg?branch=develop
+    :target: https://travis-ci.com/github/fabfuel/circuitbreaker
 
 .. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/coverage.png?b=master
     :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
