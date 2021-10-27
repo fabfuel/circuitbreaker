@@ -13,7 +13,7 @@ dependencies = ["typing; python_version < '3.5'"]
 
 setup(
     name='circuitbreaker',
-    version='1.3.1',
+    version='1.3.2',
     url='https://github.com/fabfuel/circuitbreaker',
     download_url='https://github.com/fabfuel/circuitbreaker/archive/1.3.1.tar.gz',
     license='BSD-3-Clause',
