@@ -1,6 +1,10 @@
 from time import sleep
 
-from mock.mock import patch, Mock
+try:
+    from unittest.mock import Mock, patch
+except ImportError:
+    from mock import Mock, patch
+
 from pytest import raises
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, \
@@ -78,7 +82,7 @@ def test_threshold_hit_prevents_consequent_calls(mock_remote):
     with raises(CircuitBreakerError):
         circuit_threshold_1()
 
-    mock_remote.assert_called_once()
+    mock_remote.assert_called_once_with()
 
 
 @patch('test_functional.pseudo_remote_call', return_value=True)
@@ -241,4 +245,4 @@ def test_circuitbreaker_handles_generator_functions(mock_remote):
     with raises(CircuitBreakerError):
         list(circuit_generator_failure())
 
-    mock_remote.assert_called_once()
+    mock_remote.assert_called_once_with()
