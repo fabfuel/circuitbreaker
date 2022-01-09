@@ -31,7 +31,7 @@ Usage
 This is the simplest example. Just decorate a function with the ``@circuit`` decorator::
 
     from circuitbreaker import circuit
-    
+
     @circuit
     def external_call():
         ...
@@ -51,18 +51,18 @@ This decorator sets up a circuit breaker with the default settings. The circuit 
 What does *failure* mean?
 =========================
 A *failure* is a raised exception, which was not caught during the function call.
-By default, the circuit breaker listens for all exceptions based on the class ``Exception``. 
-That means, that all exceptions raised during the function call are considered as an 
+By default, the circuit breaker listens for all exceptions based on the class ``Exception``.
+That means, that all exceptions raised during the function call are considered as an
 "expected failure" and will increase the failure count.
 
 Get specific about the expected failure
 =======================================
-It is important, to be **as specific as possible**, when defining the expected exception. 
+It is important, to be **as specific as possible**, when defining the expected exception.
 The main purpose of a circuit breaker is to protect your distributed system from a cascading failure.
 That means, you probably want to open the circuit breaker only, if the integration point on the other
 end is unavailable. So e.g. if there is an ``ConnectionError`` or a request ``Timeout``.
 
-If you are e.g. using the requests library (http://docs.python-requests.org/) for making HTTP calls, 
+If you are e.g. using the requests library (http://docs.python-requests.org/) for making HTTP calls,
 its ``RequestException`` class would be a great choice for the ``expected_exception`` parameter.
 
 All recognized exceptions will be re-raised anyway, but the goal is, to let the circuit breaker only
@@ -77,7 +77,7 @@ Configuration
 The following configuration options can be adjusted via decorator parameters. For example::
 
     from circuitbreaker import circuit
-    
+
     @circuit(failure_threshold=10, expected_exception=ConnectionError)
     def external_call():
         ...
@@ -114,13 +114,13 @@ If you apply circuit breakers to a couple of functions and you always set specif
 you can extend the ``CircuitBreaker`` class and create your own circuit breaker subclass instead::
 
     from circuitbreaker import CircuitBreaker
-    
+
     class MyCircuitBreaker(CircuitBreaker):
         FAILURE_THRESHOLD = 10
         RECOVERY_TIMEOUT = 60
         EXPECTED_EXCEPTION = RequestException
-        
-        
+
+
 Now you have two options to apply your circuit breaker to a function. As an Object directly::
 
     @MyCircuitBreaker()
@@ -128,7 +128,7 @@ Now you have two options to apply your circuit breaker to a function. As an Obje
         ...
 
 Please note, that the circuit breaker class has to be initialized, you have to use a class instance as decorator (``@MyCircuitBreaker()``), not the class itself (``@MyCircuitBreaker``).
-        
+
 Or via the decorator proxy::
 
     @circuit(cls=MyCircuitBreaker)
