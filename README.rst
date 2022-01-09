@@ -143,8 +143,3 @@ Monitoring
 To keep track of the health of your application and the state of your circuit breakers, every circuit breaker registers itself at the ``CircuitBreakerMonitor``. You can receive all registered circuit breakers via ``CircuitBreakerMonitor.get_circuits()``.
 
 To get an aggregated health status, you can ask the Monitor via ``CircuitBreakerMonitor.all_closed()``. Or you can retrieve the currently open circuits via ``CircuitBreakerMonitor.get_open()`` and the closed circuits via ``CircuitBreakerMonitor.get_closed()``.
-
-
-Todo
-----
-- add unit tests
