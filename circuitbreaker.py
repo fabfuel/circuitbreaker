@@ -88,7 +88,7 @@ class CircuitBreaker(object):
         """
         Calls the decorated generator function and applies the circuit breaker
         rules on success or failure
-        :param func: Decorated genrator function
+        :param func: Decorated generator function
         """
         with self:
             for el in func(*args, **kwargs):
