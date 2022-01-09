@@ -42,7 +42,7 @@ class CircuitBreaker(object):
     def __enter__(self):
         return None
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, _traceback):
         if exc_type and issubclass(exc_type, self._expected_exception):
             # exception was raised and is our concern
             self._last_failure = exc_value
