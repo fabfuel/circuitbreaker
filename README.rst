@@ -13,7 +13,7 @@ CircuitBreaker
 .. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/quality-score.png?b=master
     :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
 
-This is a Python implementation of the "Circuit Breaker" Pattern (http://martinfowler.com/bliki/CircuitBreaker.html).
+This is a Python implementation of the "Circuit Breaker" Pattern (https://martinfowler.com/bliki/CircuitBreaker.html).
 Inspired by Michael T. Nygard's highly recommendable book *Release It!* (https://pragprog.com/book/mnee/release-it).
 
 
@@ -62,7 +62,7 @@ The main purpose of a circuit breaker is to protect your distributed system from
 That means, you probably want to open the circuit breaker only, if the integration point on the other
 end is unavailable. So e.g. if there is an ``ConnectionError`` or a request ``Timeout``.
 
-If you are e.g. using the requests library (http://docs.python-requests.org/) for making HTTP calls,
+If you are e.g. using the requests library (https://docs.python-requests.org/) for making HTTP calls,
 its ``RequestException`` class would be a great choice for the ``expected_exception`` parameter.
 
 All recognized exceptions will be re-raised anyway, but the goal is, to let the circuit breaker only
