@@ -14,7 +14,7 @@ CircuitBreaker
     :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
 
 This is a Python implementation of the "Circuit Breaker" Pattern (https://martinfowler.com/bliki/CircuitBreaker.html).
-Inspired by Michael T. Nygard's highly recommendable book *Release It!* (https://pragprog.com/book/mnee/release-it).
+Inspired by Michael T. Nygard's highly recommendable book *Release It!* (https://pragprog.com/titles/mnee2/release-it-second-edition/).
 
 
 Installation
