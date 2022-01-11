@@ -42,7 +42,7 @@ class CircuitBreaker(object):
     def __enter__(self):
         return None
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, _traceback):
         if exc_type and issubclass(exc_type, self._expected_exception):
             # exception was raised and is our concern
             self._last_failure = exc_value
@@ -88,7 +88,7 @@ class CircuitBreaker(object):
         """
         Calls the decorated generator function and applies the circuit breaker
         rules on success or failure
-        :param func: Decorated genrator function
+        :param func: Decorated generator function
         """
         with self:
             for el in func(*args, **kwargs):
