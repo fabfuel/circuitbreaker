@@ -134,9 +134,9 @@ class CircuitBreaker(object):
     def open_remaining(self):
         """
         Number of seconds remaining, the circuit breaker stays in OPEN state
-        :return: int
+        :return: float
         """
-        return int((self._opened + self._recovery_timeout) - monotonic())
+        return (self._opened + self._recovery_timeout) - monotonic()
 
     @property
     def failure_count(self):
