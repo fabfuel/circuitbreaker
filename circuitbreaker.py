@@ -5,6 +5,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from functools import wraps
+from datetime import datetime, timedelta
 from inspect import isgeneratorfunction
 from typing import AnyStr, Iterable
 
@@ -124,18 +125,18 @@ class CircuitBreaker(object):
     @property
     def open_until(self):
         """
-        The monotime when the circuit breaker will try to recover
-        :return: float
+        The approximate datetime when the circuit breaker will try to recover
+        :return: datetime
         """
-        return self._opened + self._recovery_timeout
+        return datetime.utcnow() + timedelta(seconds=self.open_remaining)
 
     @property
     def open_remaining(self):
         """
         Number of seconds remaining, the circuit breaker stays in OPEN state
-        :return: float
+        :return: int
         """
-        return self.open_until - monotonic()
+        return int((self._opened + self._recovery_timeout) - monotonic())
 
     @property
     def failure_count(self):
