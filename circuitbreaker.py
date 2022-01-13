@@ -7,7 +7,11 @@ from __future__ import absolute_import
 from functools import wraps
 from inspect import isgeneratorfunction
 from typing import AnyStr, Iterable
-from time import monotonic
+
+try:
+  from time import monotonic
+except ImportError:
+  from monotonic import monotonic
 
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
