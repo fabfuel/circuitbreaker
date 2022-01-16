@@ -8,6 +8,7 @@ from functools import wraps
 from datetime import datetime, timedelta
 from inspect import isgeneratorfunction
 from typing import AnyStr, Iterable
+from math import ceil, floor
 
 try:
   from time import monotonic
@@ -134,9 +135,10 @@ class CircuitBreaker(object):
     def open_remaining(self):
         """
         Number of seconds remaining, the circuit breaker stays in OPEN state
-        :return: float
+        :return: int
         """
-        return (self._opened + self._recovery_timeout) - monotonic()
+        remain = (self._opened + self._recovery_timeout) - monotonic()
+        return ceil(remain) if remain > 0 else floor(remain)
 
     @property
     def failure_count(self):
