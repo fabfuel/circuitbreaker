@@ -8,6 +8,12 @@ from functools import wraps
 from datetime import datetime, timedelta
 from inspect import isgeneratorfunction
 from typing import AnyStr, Iterable
+from math import ceil, floor
+
+try:
+  from time import monotonic
+except ImportError:
+  from monotonic import monotonic
 
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
@@ -34,7 +40,7 @@ class CircuitBreaker(object):
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
         self._state = STATE_CLOSED
-        self._opened = datetime.utcnow()
+        self._opened = monotonic()
 
     def __call__(self, wrapped):
         return self.decorate(wrapped)
@@ -109,7 +115,7 @@ class CircuitBreaker(object):
         self._failure_count += 1
         if self._failure_count >= self._failure_threshold:
             self._state = STATE_OPEN
-            self._opened = datetime.utcnow()
+            self._opened = monotonic()
 
     @property
     def state(self):
@@ -120,10 +126,10 @@ class CircuitBreaker(object):
     @property
     def open_until(self):
         """
-        The datetime, when the circuit breaker will try to recover
+        The approximate datetime when the circuit breaker will try to recover
         :return: datetime
         """
-        return self._opened + timedelta(seconds=self._recovery_timeout)
+        return datetime.utcnow() + timedelta(seconds=self.open_remaining)
 
     @property
     def open_remaining(self):
@@ -131,7 +137,8 @@ class CircuitBreaker(object):
         Number of seconds remaining, the circuit breaker stays in OPEN state
         :return: int
         """
-        return (self.open_until - datetime.utcnow()).total_seconds()
+        remain = (self._opened + self._recovery_timeout) - monotonic()
+        return ceil(remain) if remain > 0 else floor(remain)
 
     @property
     def failure_count(self):
