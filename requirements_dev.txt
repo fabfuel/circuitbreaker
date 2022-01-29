@@ -1,4 +1,4 @@
-mock
+mock; python_version < '3.3'
 pytest
 pytest-flake8
 pytest-mock
