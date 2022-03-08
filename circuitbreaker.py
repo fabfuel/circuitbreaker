@@ -62,7 +62,10 @@ class CircuitBreaker(object):
         Applies the circuit breaker to a function
         """
         if self._name is None:
-            self._name = function.__qualname__
+            try:
+                self._name = function.__qualname__
+            except AttributeError:
+                self._name = function.__name__
 
         CircuitBreakerMonitor.register(self)
 
