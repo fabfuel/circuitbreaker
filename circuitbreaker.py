@@ -11,9 +11,9 @@ from typing import AnyStr, Iterable
 from math import ceil, floor
 
 try:
-  from time import monotonic
+    from time import monotonic
 except ImportError:
-  from monotonic import monotonic
+    from monotonic import monotonic
 
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
