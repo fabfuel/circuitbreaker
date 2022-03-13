@@ -4,14 +4,8 @@ CircuitBreaker
 .. image:: https://badge.fury.io/py/circuitbreaker.svg
     :target: https://badge.fury.io/py/circuitbreaker
 
-.. image:: https://travis-ci.com/fabfuel/circuitbreaker.svg?branch=develop
-    :target: https://travis-ci.com/github/fabfuel/circuitbreaker
-
-.. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/coverage.png?b=master
-    :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
-
-.. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/quality-score.png?b=master
-    :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
+.. image:: https://github.com/fabfuel/circuitbreaker/actions/workflows/build.yml/badge.svg
+    :target: https://github.com/fabfuel/circuitbreaker/actions/workflows/build.yml
 
 This is a Python implementation of the "Circuit Breaker" Pattern (https://martinfowler.com/bliki/CircuitBreaker.html).
 Inspired by Michael T. Nygard's highly recommendable book *Release It!* (https://pragprog.com/titles/mnee2/release-it-second-edition/).
