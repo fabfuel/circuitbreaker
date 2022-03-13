@@ -46,7 +46,7 @@ def test_circuitbreaker_should_clear_last_exception_on_success_call():
 def test_circuitbreaker_should_call_fallback_function_if_open():
     fallback = Mock(return_value=True)
 
-    func = Mock(return_value=False, __name__="Mock") # attribute __name__ required for 2.7 compat with functools.wraps
+    func = Mock(return_value=False, __name__="Mock")  # attribute __name__ required for 2.7 compat with functools.wraps
 
     CircuitBreaker.opened = lambda self: True
 
@@ -56,10 +56,11 @@ def test_circuitbreaker_should_call_fallback_function_if_open():
     decorated_func()
     fallback.assert_called_once_with()
 
+
 def test_circuitbreaker_should_not_call_function_if_open():
     fallback = Mock(return_value=True)
 
-    func = Mock(return_value=False, __name__="Mock") # attribute __name__ required for 2.7 compat with functools.wraps
+    func = Mock(return_value=False, __name__="Mock")  # attribute __name__ required for 2.7 compat with functools.wraps
 
     CircuitBreaker.opened = lambda self: True
 
@@ -73,6 +74,7 @@ def test_circuitbreaker_should_not_call_function_if_open():
 def mocked_function(*args, **kwargs):
     pass
 
+
 def test_circuitbreaker_call_fallback_function_with_parameters():
     fallback = Mock(return_value=True)
 
@@ -82,23 +84,27 @@ def test_circuitbreaker_call_fallback_function_with_parameters():
     cb.opened = lambda self: True
     func_decorated = cb.decorate(mocked_function)
 
-    func_decorated('test2',test='test')
+    func_decorated('test2', test='test')
 
     # check args and kwargs are getting correctly to fallback function
 
     fallback.assert_called_once_with('test2', test='test')
 
+
 @patch('circuitbreaker.CircuitBreaker.decorate')
 def test_circuit_decorator_without_args(circuitbreaker_mock):
-    function = lambda: True
+    def function():
+        return True
     circuit(function)
     circuitbreaker_mock.assert_called_once_with(function)
 
 
 @patch('circuitbreaker.CircuitBreaker.__init__')
 def test_circuit_decorator_with_args(circuitbreaker_mock):
+    def function_fallback():
+        return True
+
     circuitbreaker_mock.return_value = None
-    function_fallback = lambda: True
     circuit(10, 20, KeyError, 'foobar', function_fallback)
     circuitbreaker_mock.assert_called_once_with(
         expected_exception=KeyError,
