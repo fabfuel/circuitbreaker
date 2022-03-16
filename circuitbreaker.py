@@ -34,9 +34,10 @@ class CircuitBreaker(object):
                  failure_threshold=None,
                  recovery_timeout=None,
                  expected_exception=None,
-                 is_breaking_exception=None,
                  name=None,
-                 fallback_function=None):
+                 fallback_function=None,
+                 is_breaking_exception=None
+                 ):
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
@@ -247,9 +248,9 @@ def circuit(failure_threshold=None,
             recovery_timeout=None,
             expected_exception=None,
             name=None,
-            is_breaking_exception=None,
             fallback_function=None,
-            cls=CircuitBreaker):
+            cls=CircuitBreaker,
+            is_breaking_exception=None):
 
     # if the decorator is used without parameters, the
     # wrapped function is provided as first argument
@@ -260,6 +261,6 @@ def circuit(failure_threshold=None,
             failure_threshold=failure_threshold,
             recovery_timeout=recovery_timeout,
             expected_exception=expected_exception,
-            is_breaking_exception=None,
             name=name,
-            fallback_function=fallback_function)
+            fallback_function=fallback_function,
+            is_breaking_exception=None)

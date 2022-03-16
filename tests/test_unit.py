@@ -103,9 +103,10 @@ def test_circuit_decorator_with_args():
     def function_fallback():
         return True
 
+
     breaker = circuit(10, 20, KeyError, 'foobar', function_fallback)
 
-    assert breaker._expected_exception == KeyError
+    assert breaker.is_breaking_exception(KeyError, KeyError("I am a bad key"))
     assert breaker._failure_threshold == 10
     assert breaker._recovery_timeout == 20
     assert breaker._name == "foobar"
