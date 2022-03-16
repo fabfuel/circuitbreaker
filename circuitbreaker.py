@@ -41,19 +41,22 @@ class CircuitBreaker(object):
         """
         Construct a circuit breaker.
 
-        Args:
-            failure_threshold (int): open after
-            recovery_timouet (int): clase after this many seconds
-            failure_if: either an Exception type, iterable of exception types, or a predicate function.
-                      If this is a callable, it should have the signature (class, Exception) -> bool,
-                      where the args are the exception type, the exception value. When the return value
-                      is True, this indicates that a breaker failure should be triggered.
-            name (str): name for this circuitbreaker
-            fallback_function: called when the circuit is opened
-            expected_exception: exception type. deprecated in favor of using failure_if.
+            :param failure_threshold: break open after this many failures
+            :param recovery_timout: clase after this many seconds
+            :param failure_if: either an Exception type, iterable of exception types, or a predicate function.
+                      If an exception or list of exception types, a failure will be triggered when a thrown
+                      exception matches a type.
 
-        Returns:
-           Circuitbreaker instance
+                      If this is a predicate function, it should have the signature (class, Exception) -> bool,
+                      where the args are the exception type and the exception value. Return value True
+                      indicates a breaker failure.
+
+            :param name: name for this circuitbreaker
+            :param fallback_function: called when the circuit is opened
+            :param expected_exception: exception class. use failure_if instead. This is for backwards compatibility
+
+           :return: Circuitbreaker instance
+           :rtype: Circuitbreaker
         """
         self._last_failure = None
         self._failure_count = 0
@@ -70,7 +73,7 @@ class CircuitBreaker(object):
         # default to plain old Exception
         failure_if = failure_if or Exception #
 
-        # Auto-Construct a breaker predicate, depending on the type of the 'failure_if' param
+        # suto-construct a breaker predicate, depending on the type of the 'failure_if' param
         if isclass(failure_if) and issubclass(failure_if, Exception):
             def check_exception(thrown_type, _):
                 return issubclass(thrown_type, failure_if)
@@ -86,6 +89,7 @@ class CircuitBreaker(object):
                 self.is_breaking_exception = failure_if
             else:
                 # iterable of Exceptions
+                assert not isinstance(failure_if, str) # paranoid guard against a mistake
                 self.is_breaking_exception = in_exception_list(failure_if)
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
