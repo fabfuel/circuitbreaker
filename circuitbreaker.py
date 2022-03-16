@@ -33,33 +33,60 @@ class CircuitBreaker(object):
     def __init__(self,
                  failure_threshold=None,
                  recovery_timeout=None,
-                 break_if=None,
+                 failure_if=None,
                  name=None,
-                 fallback_function=None
+                 fallback_function=None,
+                 expected_exception=None
                  ):
+        """
+        Construct a circuit breaker.
+
+        Args:
+            failure_threshold (int): open after
+            recovery_timouet (int): clase after this many seconds
+            failure_if: either an Exception type, iterable of exception types, or a predicate function.
+                      If this is a callable, it should have the signature (class, Exception) -> bool,
+                      where the args are the exception type, the exception value. When the return value
+                      is True, this indicates that a breaker failure should be triggered.
+            name (str): name for this circuitbreaker
+            fallback_function: called when the circuit is opened
+            expected_exception: exception type. deprecated in favor of using failure_if.
+
+        Returns:
+           Circuitbreaker instance
+        """
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
 
-        break_if = break_if or Exception # default to plain old Exception
+        # Support expected_exception for backwards compatibility
+        #  with code that uses kwargs. Deprecate the 'expected_exception' parameter
+        #  to simplfiy this code
+        assert bool(failure_if) ^ bool(expected_exception), "Only one of 'failure_if' or 'expected_exception' is allowed"
+        if expected_exception is not None:
+            failure_if = expected_exception
 
-        if isclass(break_if) and issubclass(break_if, Exception):
+        # default to plain old Exception
+        failure_if = failure_if or Exception #
+
+        # Auto-Construct a breaker predicate, depending on the type of the 'failure_if' param
+        if isclass(failure_if) and issubclass(failure_if, Exception):
             def check_exception(thrown_type, _):
-                return issubclass(thrown_type, break_if)
+                return issubclass(thrown_type, failure_if)
             self.is_breaking_exception = check_exception
         else:
             # Check for iterable
             # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
             try:
-                iter(break_if)
+                iter(failure_if)
             except TypeError:
                 # not iterable. assume it's a predicate function 
-                assert callable(break_if), "break_if must be a callable(throw_type, throw_value)"
-                self.is_breaking_exception = break_if
+                assert callable(failure_if), "failure_if must be a callable(throw_type, throw_value)"
+                self.is_breaking_exception = failure_if
             else:
                 # iterable of Exceptions
-                self.is_breaking_exception = in_exception_list(break_if)
+                self.is_breaking_exception = in_exception_list(failure_if)
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
@@ -252,7 +279,7 @@ class CircuitBreakerMonitor(object):
 
 def circuit(failure_threshold=None,
             recovery_timeout=None,
-            break_if=None,
+            failure_if=None,
             name=None,
             fallback_function=None,
             cls=CircuitBreaker):
@@ -265,6 +292,6 @@ def circuit(failure_threshold=None,
         return cls(
             failure_threshold=failure_threshold,
             recovery_timeout=recovery_timeout,
-            break_if=break_if,
+            failure_if=failure_if,
             name=name,
             fallback_function=fallback_function)
