@@ -68,7 +68,7 @@ class CircuitBreaker(object):
         if isclass(failure_if) and issubclass(failure_if, Exception):
             def check_exception(thrown_type, _):
                 return issubclass(thrown_type, failure_if)
-            self.is_breaking_exception = check_exception
+            self.is_failure = check_exception
         else:
             # Check for iterable
             # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
@@ -77,11 +77,11 @@ class CircuitBreaker(object):
             except TypeError:
                 # not iterable. assume it's a predicate function 
                 assert callable(failure_if), "failure_if must be a callable(throw_type, throw_value)"
-                self.is_breaking_exception = failure_if
+                self.is_failure = failure_if
             else:
                 # iterable of Exceptions
                 assert not isinstance(failure_if, str) # paranoid guard against a mistake
-                self.is_breaking_exception = in_exception_list(failure_if)
+                self.is_failure = in_exception_list(failure_if)
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
@@ -95,7 +95,7 @@ class CircuitBreaker(object):
         return None
 
     def __exit__(self, exc_type, exc_value, _traceback):
-        if exc_type and self.is_breaking_exception(exc_type, exc_value):
+        if exc_type and self.is_failure(exc_type, exc_value):
             # exception was raised and is our concern
             self._last_failure = exc_value
             self.__call_failed()

@@ -109,9 +109,9 @@ def test_circuit_decorator_with_args():
 
     breaker = circuit(10, 20, KeyError, 'foobar', function_fallback)
 
-    assert breaker.is_breaking_exception(KeyError, None)
-    assert not breaker.is_breaking_exception(Exception, None)
-    assert not breaker.is_breaking_exception(FooError, None)
+    assert breaker.is_failure(KeyError, None)
+    assert not breaker.is_failure(Exception, None)
+    assert not breaker.is_failure(FooError, None)
     assert breaker._failure_threshold == 10
     assert breaker._recovery_timeout == 20
     assert breaker._name == "foobar"
@@ -123,28 +123,28 @@ def test_breaker_failure_if_with_predicate():
 
     breaker_four = circuit(failure_if=is_four_foo)
 
-    assert breaker_four.is_breaking_exception(FooError, FooError(4))
-    assert not breaker_four.is_breaking_exception(FooError, FooError(2))
+    assert breaker_four.is_failure(FooError, FooError(4))
+    assert not breaker_four.is_failure(FooError, FooError(2))
 
 def test_breaker_default_constructor_traps_Exception():
 
     breaker = circuit()
-    assert breaker.is_breaking_exception(Exception, Exception())
-    assert breaker.is_breaking_exception(FooError, FooError())
+    assert breaker.is_failure(Exception, Exception())
+    assert breaker.is_failure(FooError, FooError())
 
 
 def test_breaker_failure_if_with_custom_exception():
 
     breaker = circuit(failure_if=FooError)
-    assert breaker.is_breaking_exception(FooError, FooError())
-    assert not breaker.is_breaking_exception(Exception, Exception())
+    assert breaker.is_failure(FooError, FooError())
+    assert not breaker.is_failure(Exception, Exception())
 
 def test_breaker_constructor_faliure_if_with_exception_list():
 
     class BarError(Exception): pass
 
     breaker = circuit(failure_if=(FooError, BarError))
-    assert breaker.is_breaking_exception(FooError, FooError())
-    assert breaker.is_breaking_exception(BarError, BarError())
-    assert not breaker.is_breaking_exception(Exception, Exception())
+    assert breaker.is_failure(FooError, FooError())
+    assert breaker.is_failure(BarError, BarError())
+    assert not breaker.is_failure(Exception, Exception())
 
