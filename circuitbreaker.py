@@ -35,8 +35,7 @@ class CircuitBreaker(object):
                  recovery_timeout=None,
                  failure_if=None,
                  name=None,
-                 fallback_function=None,
-                 expected_exception=None
+                 fallback_function=None
                  ):
         """
         Construct a circuit breaker.
@@ -53,7 +52,6 @@ class CircuitBreaker(object):
 
             :param name: name for this circuitbreaker
             :param fallback_function: called when the circuit is opened
-            :param expected_exception: exception class. use failure_if instead. This is for backwards compatibility
 
            :return: Circuitbreaker instance
            :rtype: Circuitbreaker
@@ -63,15 +61,8 @@ class CircuitBreaker(object):
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
 
-        # Support expected_exception for backwards compatibility
-        #  with code that uses kwargs. Deprecate the 'expected_exception' parameter
-        #  to simplfiy this code
-        assert bool(failure_if) ^ bool(expected_exception), "Only one of 'failure_if' or 'expected_exception' is allowed"
-        if expected_exception is not None:
-            failure_if = expected_exception
-
         # default to plain old Exception
-        failure_if = failure_if or Exception #
+        failure_if = failure_if or Exception
 
         # suto-construct a breaker predicate, depending on the type of the 'failure_if' param
         if isclass(failure_if) and issubclass(failure_if, Exception):
