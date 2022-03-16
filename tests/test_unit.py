@@ -121,7 +121,7 @@ def test_breaker_predicate_constructor():
     def is_four_foo(thrown_type, thrown_value):
         return thrown_value.val == 4
 
-    breaker_four = circuit(is_breaking_exception=is_four_foo)
+    breaker_four = circuit(break_if=is_four_foo)
 
     assert breaker_four.is_breaking_exception(FooError, FooError(4))
     assert not breaker_four.is_breaking_exception(FooError, FooError(2))
@@ -135,7 +135,7 @@ def test_breaker_default_constructor_traps_Exception():
 
 def test_breaker_default_constructor_traps_FooError():
 
-    breaker = circuit(expected_exception=FooError)
+    breaker = circuit(break_if=FooError)
     assert not breaker.is_breaking_exception(Exception, Exception())
     assert breaker.is_breaking_exception(FooError, FooError())
 
@@ -143,7 +143,7 @@ def test_breaker_constructor_with_exception_list_predicat():
 
     class BarError(Exception): pass
 
-    breaker = circuit(is_breaking_exception=in_exception_list(FooError, BarError))
+    breaker = circuit(break_if=(FooError, BarError))
     assert not breaker.is_breaking_exception(Exception, Exception())
     assert breaker.is_breaking_exception(FooError, FooError())
     assert breaker.is_breaking_exception(BarError, BarError())

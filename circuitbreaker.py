@@ -6,7 +6,7 @@ from __future__ import absolute_import
 
 from functools import wraps
 from datetime import datetime, timedelta
-from inspect import isgeneratorfunction
+from inspect import isgeneratorfunction, isclass
 from typing import AnyStr, Iterable
 from math import ceil, floor
 
@@ -33,27 +33,33 @@ class CircuitBreaker(object):
     def __init__(self,
                  failure_threshold=None,
                  recovery_timeout=None,
-                 expected_exception=None,
+                 break_if=None,
                  name=None,
-                 fallback_function=None,
-                 is_breaking_exception=None
+                 fallback_function=None
                  ):
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
 
-        if is_breaking_exception is None:
-            if expected_exception is None:
-                def check_exception(thrown_type, _):
-                    return issubclass(thrown_type, Exception)
-            else:
-                def check_exception(thrown_type, _):
-                    return issubclass(thrown_type, expected_exception)
+        break_if = break_if or Exception # default to plain old Exception
+
+        if isclass(break_if) and issubclass(break_if, Exception):
+            def check_exception(thrown_type, _):
+                return issubclass(thrown_type, break_if)
             self.is_breaking_exception = check_exception
-        elif is_breaking_exception:
-            assert expected_exception is None, "'is_breaking_exception' already specified. cannot also specify 'expected_exception'"
-            self.is_breaking_exception = is_breaking_exception
+        else:
+            # Check for iterable
+            # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
+            try:
+                iter(break_if)
+            except TypeError:
+                # not iterable. assume it's a predicate function 
+                assert callable(break_if), "break_if must be a callable(throw_type, throw_value)"
+                self.is_breaking_exception = break_if
+            else:
+                # iterable of Exceptions
+                self.is_breaking_exception = in_exception_list(break_if)
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
@@ -246,11 +252,10 @@ class CircuitBreakerMonitor(object):
 
 def circuit(failure_threshold=None,
             recovery_timeout=None,
-            expected_exception=None,
+            break_if=None,
             name=None,
             fallback_function=None,
-            cls=CircuitBreaker,
-            is_breaking_exception=None):
+            cls=CircuitBreaker):
 
     # if the decorator is used without parameters, the
     # wrapped function is provided as first argument
@@ -260,7 +265,6 @@ def circuit(failure_threshold=None,
         return cls(
             failure_threshold=failure_threshold,
             recovery_timeout=recovery_timeout,
-            expected_exception=expected_exception,
+            break_if=break_if,
             name=name,
-            fallback_function=fallback_function,
-            is_breaking_exception=is_breaking_exception)
+            fallback_function=fallback_function)
