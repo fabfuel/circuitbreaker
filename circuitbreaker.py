@@ -19,7 +19,7 @@ STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
 
-def in_exception_list(exc_types):
+def in_exception_list(*exc_types):
     """Build a predicate function that checks if an exception is a subclass of a specified type"""
     def matches_types(thrown_type, thrown_value):
         return any(issubclass(thrown_type, et) for et in exc_types)
@@ -263,4 +263,4 @@ def circuit(failure_threshold=None,
             expected_exception=expected_exception,
             name=name,
             fallback_function=fallback_function,
-            is_breaking_exception=None)
+            is_breaking_exception=is_breaking_exception)

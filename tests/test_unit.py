@@ -5,7 +5,11 @@ except ImportError:
 
 from pytest import raises
 
-from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
+from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit, in_exception_list
+
+class FooError(Exception): 
+    def __init__(self, val=None):
+        self.val = val
 
 
 def test_circuitbreaker__str__():
@@ -103,12 +107,44 @@ def test_circuit_decorator_with_args():
     def function_fallback():
         return True
 
-
     breaker = circuit(10, 20, KeyError, 'foobar', function_fallback)
 
-    assert breaker.is_breaking_exception(KeyError, KeyError("I am a bad key"))
+    assert breaker.is_breaking_exception(KeyError, None)
+    assert not breaker.is_breaking_exception(Exception, None)
+    assert not breaker.is_breaking_exception(FooError, None)
     assert breaker._failure_threshold == 10
     assert breaker._recovery_timeout == 20
     assert breaker._name == "foobar"
     assert breaker._fallback_function == function_fallback
+
+def test_breaker_predicate_constructor():
+    def is_four_foo(thrown_type, thrown_value):
+        return thrown_value.val == 4
+
+    breaker_four = circuit(is_breaking_exception=is_four_foo)
+
+    assert breaker_four.is_breaking_exception(FooError, FooError(4))
+    assert not breaker_four.is_breaking_exception(FooError, FooError(2))
+
+def test_breaker_default_constructor_traps_Exception():
+
+    breaker = circuit()
+    assert breaker.is_breaking_exception(Exception, Exception())
+    assert breaker.is_breaking_exception(FooError, FooError())
+
+
+def test_breaker_default_constructor_traps_FooError():
+
+    breaker = circuit(expected_exception=FooError)
+    assert not breaker.is_breaking_exception(Exception, Exception())
+    assert breaker.is_breaking_exception(FooError, FooError())
+
+def test_breaker_constructor_with_exception_list_predicat():
+
+    class BarError(Exception): pass
+
+    breaker = circuit(is_breaking_exception=in_exception_list(FooError, BarError))
+    assert not breaker.is_breaking_exception(Exception, Exception())
+    assert breaker.is_breaking_exception(FooError, FooError())
+    assert breaker.is_breaking_exception(BarError, BarError())
 
