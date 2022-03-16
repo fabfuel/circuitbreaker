@@ -19,24 +19,41 @@ STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
 
+def in_exception_list(exc_types):
+    """Build a predicate function that checks if an exception is a subclass of a specified type"""
+    def matches_types(thrown_type, thrown_value):
+        return any(issubclass(thrown_type, et) for et in exc_types)
+    return matches_types
 
 class CircuitBreaker(object):
     FAILURE_THRESHOLD = 5
     RECOVERY_TIMEOUT = 30
-    EXPECTED_EXCEPTION = Exception
     FALLBACK_FUNCTION = None
 
     def __init__(self,
                  failure_threshold=None,
                  recovery_timeout=None,
                  expected_exception=None,
+                 is_breaking_exception=None,
                  name=None,
                  fallback_function=None):
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
-        self._expected_exception = expected_exception or self.EXPECTED_EXCEPTION
+
+        if is_breaking_exception is None:
+            if expected_exception is None:
+                def check_exception(thrown_type, _):
+                    return issubclass(thrown_type, Exception)
+            else:
+                def check_exception(thrown_type, _):
+                    return issubclass(thrown_type, expected_exception)
+            self.is_breaking_exception = check_exception
+        elif is_breaking_exception:
+            assert expected_exception is None, "'is_breaking_exception' already specified. cannot also specify 'expected_exception'"
+            self.is_breaking_exception = is_breaking_exception
+
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
         self._state = STATE_CLOSED
@@ -49,7 +66,7 @@ class CircuitBreaker(object):
         return None
 
     def __exit__(self, exc_type, exc_value, _traceback):
-        if exc_type and issubclass(exc_type, self._expected_exception):
+        if exc_type and self.is_breaking_exception(exc_type, exc_value):
             # exception was raised and is our concern
             self._last_failure = exc_value
             self.__call_failed()
@@ -230,6 +247,7 @@ def circuit(failure_threshold=None,
             recovery_timeout=None,
             expected_exception=None,
             name=None,
+            is_breaking_exception=None,
             fallback_function=None,
             cls=CircuitBreaker):
 
@@ -242,5 +260,6 @@ def circuit(failure_threshold=None,
             failure_threshold=failure_threshold,
             recovery_timeout=recovery_timeout,
             expected_exception=expected_exception,
+            is_breaking_exception=None,
             name=name,
             fallback_function=fallback_function)
