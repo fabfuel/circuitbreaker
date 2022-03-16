@@ -20,7 +20,7 @@ STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
 
 def in_exception_list(*exc_types):
-    """Build a predicate function that checks if an exception is a subclass of a specified type"""
+    """Build a predicate function that checks if an exception is a subtype from a list"""
     def matches_types(thrown_type, thrown_value):
         return any(issubclass(thrown_type, et) for et in exc_types)
     return matches_types
