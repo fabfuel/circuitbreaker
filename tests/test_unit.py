@@ -99,17 +99,15 @@ def test_circuit_decorator_without_args(circuitbreaker_mock):
     circuitbreaker_mock.assert_called_once_with(function)
 
 
-@patch('circuitbreaker.CircuitBreaker.__init__')
-def test_circuit_decorator_with_args(circuitbreaker_mock):
+def test_circuit_decorator_with_args():
     def function_fallback():
         return True
 
-    circuitbreaker_mock.return_value = None
-    circuit(10, 20, KeyError, 'foobar', function_fallback)
-    circuitbreaker_mock.assert_called_once_with(
-        expected_exception=KeyError,
-        failure_threshold=10,
-        recovery_timeout=20,
-        name='foobar',
-        fallback_function=function_fallback
-    )
+    breaker = circuit(10, 20, KeyError, 'foobar', function_fallback)
+
+    assert breaker._expected_exception == KeyError
+    assert breaker._failure_threshold == 10
+    assert breaker._recovery_timeout == 20
+    assert breaker._name == "foobar"
+    assert breaker._fallback_function == function_fallback
+
