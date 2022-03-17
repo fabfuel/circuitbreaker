@@ -22,7 +22,7 @@ STATE_HALF_OPEN = 'half_open'
 def in_exception_list(*exc_types):
     """Build a predicate function that checks if an exception is a subtype from a list"""
     def matches_types(thrown_type, thrown_value):
-        return any(issubclass(thrown_type, et) for et in exc_types)
+        return issubclass(thrown_type, exc_types)
     return matches_types
 
 class CircuitBreaker(object):
@@ -81,7 +81,7 @@ class CircuitBreaker(object):
             else:
                 # iterable of Exceptions
                 assert not isinstance(failure_if, str) # paranoid guard against a mistake
-                self.is_failure = in_exception_list(failure_if)
+                self.is_failure = in_exception_list(*failure_if)
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
