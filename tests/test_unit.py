@@ -139,7 +139,7 @@ def test_breaker_failure_if_with_custom_exception():
     assert breaker.is_failure(FooError, FooError())
     assert not breaker.is_failure(Exception, Exception())
 
-def test_breaker_constructor_faliure_if_with_exception_list():
+def test_breaker_constructor_failure_if_with_exception_list():
 
     class BarError(Exception): pass
 
