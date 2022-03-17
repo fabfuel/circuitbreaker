@@ -40,18 +40,18 @@ class CircuitBreaker(object):
         """
         Construct a circuit breaker.
 
-            :param failure_threshold: break open after this many failures
-            :param recovery_timout: close after this many seconds
-            :param expected_exception: either an Exception type, iterable of exception types, or a predicate function.
-                      If an exception or iterable of exception types, a failure will be triggered when a thrown
-                      exception matches a type.
+        :param failure_threshold: break open after this many failures
+        :param recovery_timout: close after this many seconds
+        :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
+          If an Exception type or iterable of Exception types, a failure will be triggered when a thrown
+          exception matches a type.
 
-                      If this is a predicate function, it should have the signature (class, Exception) -> bool,
-                      where the args are the exception type and the exception value. Return value True
-                      indicates a failure in the underlying function.
+          If a predicate function, it will be called with the exception type and the exception value 
+          when an exception is thrown. It should have the signature (Type[Exception], Exception) -> bool.
+          Return value True indicates a failure in the underlying function.
 
-            :param name: name for this circuitbreaker
-            :param fallback_function: called when the circuit is opened
+        :param name: name for this circuitbreaker
+        :param fallback_function: called when the circuit is opened
 
            :return: Circuitbreaker instance
            :rtype: Circuitbreaker
