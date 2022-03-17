@@ -15,6 +15,14 @@ try:
 except ImportError:
     from monotonic import monotonic
 
+# Python2 vs Python3 strings
+try:
+    basestring
+    STRING_TYPES = (basestring, unicode)
+except NameError:
+    STRING_TYPES = (bytes, str)
+
+
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
@@ -70,18 +78,17 @@ class CircuitBreaker(object):
                 return issubclass(thrown_type, expected_exception)
             self.is_failure = check_exception
         else:
-            # Check for iterable
-            # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
             try:
+                 # Check for an iterable of Exception types
                 iter(expected_exception)
-            except TypeError:
-                # not iterable. assume it's a predicate function 
-                assert callable(expected_exception), "expected_exception is not a callable(throw_type, throw_value)"
-                self.is_failure = expected_exception
-            else:
-                # iterable of Exceptions
-                assert not isinstance(expected_exception, str) # paranoid guard against a mistake
+
+                # guard against a surprise later
+                assert not isinstance(expected_exception, STRING_TYPES), "expected_exception cannot be a string. Did you mean name?"
                 self.is_failure = in_exception_list(*expected_exception)
+            except TypeError:
+                # not iterable. guess that it's a predicate function
+                assert callable(expected_exception) and not isclass(expected_exception), "expected_exception does not look like a predicate"
+                self.is_failure = expected_exception
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
