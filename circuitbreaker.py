@@ -33,7 +33,7 @@ class CircuitBreaker(object):
     def __init__(self,
                  failure_threshold=None,
                  recovery_timeout=None,
-                 failure_if=None,
+                 expected_exception=None,
                  name=None,
                  fallback_function=None
                  ):
@@ -42,7 +42,7 @@ class CircuitBreaker(object):
 
             :param failure_threshold: break open after this many failures
             :param recovery_timout: close after this many seconds
-            :param failure_if: either an Exception type, iterable of exception types, or a predicate function.
+            :param expected_exception: either an Exception type, iterable of exception types, or a predicate function.
                       If an exception or iterable of exception types, a failure will be triggered when a thrown
                       exception matches a type.
 
@@ -62,26 +62,26 @@ class CircuitBreaker(object):
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
 
         # default to plain old Exception
-        failure_if = failure_if or Exception
+        expected_exception = expected_exception or Exception
 
-        # auto-construct a failure predicate, depending on the type of the 'failure_if' param
-        if isclass(failure_if) and issubclass(failure_if, Exception):
+        # auto-construct a failure predicate, depending on the type of the 'expected_exception' param
+        if isclass(expected_exception) and issubclass(expected_exception, Exception):
             def check_exception(thrown_type, _):
-                return issubclass(thrown_type, failure_if)
+                return issubclass(thrown_type, expected_exception)
             self.is_failure = check_exception
         else:
             # Check for iterable
             # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
             try:
-                iter(failure_if)
+                iter(expected_exception)
             except TypeError:
                 # not iterable. assume it's a predicate function 
-                assert callable(failure_if), "failure_if must be a callable(throw_type, throw_value)"
-                self.is_failure = failure_if
+                assert callable(expected_exception), "expected_exception is not a callable(throw_type, throw_value)"
+                self.is_failure = expected_exception
             else:
                 # iterable of Exceptions
-                assert not isinstance(failure_if, str) # paranoid guard against a mistake
-                self.is_failure = in_exception_list(*failure_if)
+                assert not isinstance(expected_exception, str) # paranoid guard against a mistake
+                self.is_failure = in_exception_list(*expected_exception)
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
@@ -274,7 +274,7 @@ class CircuitBreakerMonitor(object):
 
 def circuit(failure_threshold=None,
             recovery_timeout=None,
-            failure_if=None,
+            expected_exception=None,
             name=None,
             fallback_function=None,
             cls=CircuitBreaker):
@@ -287,6 +287,6 @@ def circuit(failure_threshold=None,
         return cls(
             failure_threshold=failure_threshold,
             recovery_timeout=recovery_timeout,
-            failure_if=failure_if,
+            expected_exception=expected_exception,
             name=name,
             fallback_function=fallback_function)

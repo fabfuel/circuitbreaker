@@ -117,11 +117,11 @@ def test_circuit_decorator_with_args():
     assert breaker._name == "foobar"
     assert breaker._fallback_function == function_fallback
 
-def test_breaker_failure_if_with_predicate():
+def test_breaker_expected_exception_is_predicate():
     def is_four_foo(thrown_type, thrown_value):
         return thrown_value.val == 4
 
-    breaker_four = circuit(failure_if=is_four_foo)
+    breaker_four = circuit(expected_exception=is_four_foo)
 
     assert breaker_four.is_failure(FooError, FooError(4))
     assert not breaker_four.is_failure(FooError, FooError(2))
@@ -133,17 +133,17 @@ def test_breaker_default_constructor_traps_Exception():
     assert breaker.is_failure(FooError, FooError())
 
 
-def test_breaker_failure_if_with_custom_exception():
+def test_breaker_expected_exception_is_custom_exception():
 
-    breaker = circuit(failure_if=FooError)
+    breaker = circuit(expected_exception=FooError)
     assert breaker.is_failure(FooError, FooError())
     assert not breaker.is_failure(Exception, Exception())
 
-def test_breaker_constructor_failure_if_with_exception_list():
+def test_breaker_constructor_expected_exception_is_exception_list():
 
     class BarError(Exception): pass
 
-    breaker = circuit(failure_if=(FooError, BarError))
+    breaker = circuit(expected_exception=(FooError, BarError))
     assert breaker.is_failure(FooError, FooError())
     assert breaker.is_failure(BarError, BarError())
     assert not breaker.is_failure(Exception, Exception())
