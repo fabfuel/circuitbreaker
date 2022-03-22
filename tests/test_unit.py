@@ -5,7 +5,7 @@ except ImportError:
 
 from pytest import raises
 
-from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit, in_exception_list
+from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
 
 class FooError(Exception): 
     def __init__(self, val=None):
