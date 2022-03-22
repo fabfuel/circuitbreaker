@@ -18,7 +18,7 @@ except ImportError:
 # Python2 vs Python3 strings
 try:
     basestring
-    STRING_TYPES = (basestring, unicode)
+    STRING_TYPES = (basestring, )
 except NameError:
     STRING_TYPES = (bytes, str)
 
@@ -29,7 +29,7 @@ STATE_HALF_OPEN = 'half_open'
 
 def in_exception_list(*exc_types):
     """Build a predicate function that checks if an exception is a subtype from a list"""
-    def matches_types(thrown_type, thrown_value):
+    def matches_types(thrown_type, _):
         return issubclass(thrown_type, exc_types)
     return matches_types
 
@@ -49,7 +49,7 @@ class CircuitBreaker(object):
         Construct a circuit breaker.
 
         :param failure_threshold: break open after this many failures
-        :param recovery_timout: close after this many seconds
+        :param recovery_timeout: close after this many seconds
         :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
           If an Exception type or iterable of Exception types, a failure will be triggered when a thrown
           exception matches a type.
