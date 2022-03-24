@@ -11,6 +11,7 @@ class FooError(Exception):
     def __init__(self, val=None):
         self.val = val
 
+class BarError(Exception): pass
 
 def test_circuitbreaker__str__():
     cb = CircuitBreaker(name='Foobar')
@@ -141,7 +142,6 @@ def test_breaker_expected_exception_is_custom_exception():
 
 def test_breaker_constructor_expected_exception_is_exception_list():
 
-    class BarError(Exception): pass
 
     breaker = circuit(expected_exception=(FooError, BarError))
     assert breaker.is_failure(FooError, FooError())
@@ -160,3 +160,42 @@ def test_constructor_mistake_expected_exception():
     class Widget: pass
     with raises(AssertionError , match="expected_exception does not look like a predicate*"):
         breaker = circuit(10, 20, expected_exception=Widget)
+
+def test_advanced_usage_circuitbreaker_subclass():
+    class MyCircuitBreaker(CircuitBreaker):
+        EXPECTED_EXCEPTION = FooError
+
+    mybreaker = circuit(cls=MyCircuitBreaker)
+    assert not mybreaker.is_failure(Exception, Exception())
+    assert mybreaker.is_failure(FooError, FooError())
+
+def test_advanced_usage_circuitbreaker_subclass_with_list():
+    class MyCircuitBreaker(CircuitBreaker):
+        EXPECTED_EXCEPTION = (FooError, BarError)
+
+    mybreaker = circuit(cls=MyCircuitBreaker)
+    assert not mybreaker.is_failure(Exception, Exception())
+    assert mybreaker.is_failure(FooError, FooError())
+    assert mybreaker.is_failure(BarError, BarError())
+
+def test_advanced_usage_circuitbreaker_subclass_with_predicate():
+    def is_foo_4(thrown_type, thrown_value):
+        return issubclass(thrown_type, FooError) and thrown_value.val == 4
+
+    class FooFourBreaker(CircuitBreaker):
+        EXPECTED_EXCEPTION = is_foo_4
+
+    breaker = circuit(cls=FooFourBreaker)
+    assert not breaker.is_failure(Exception, Exception())
+    assert not breaker.is_failure(FooError, FooError())
+    assert breaker.is_failure(FooError, FooError(4))
+
+def test_advanced_usage_circuitbreaker_default_expected_exception():
+
+    class NervousBreaker(CircuitBreaker):
+        FAILURE_THRESHOLD = 1
+
+    breaker = circuit(cls=NervousBreaker)
+    assert breaker._failure_threshold == 1
+    assert breaker.is_failure(Exception, Exception())
+
