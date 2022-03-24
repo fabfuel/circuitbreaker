@@ -6,7 +6,7 @@ from __future__ import absolute_import
 
 from functools import wraps
 from datetime import datetime, timedelta
-from inspect import isgeneratorfunction
+from inspect import isgeneratorfunction, isclass
 from typing import AnyStr, Iterable
 from math import ceil, floor
 
@@ -15,15 +15,61 @@ try:
 except ImportError:
     from monotonic import monotonic
 
+# Python2 vs Python3 strings
+try:
+    basestring
+    STRING_TYPES = (basestring, )
+except NameError:
+    STRING_TYPES = (bytes, str)
+
+
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
+
+def in_exception_list(*exc_types):
+    """Build a predicate function that checks if an exception is a subtype from a list"""
+    def matches_types(thrown_type, _):
+        return issubclass(thrown_type, exc_types)
+    return matches_types
+
+def build_failure_predicate(expected_exception):
+    """ Build a failure predicate_function.
+          The returned function has the signature (Type[Exception], Exception) -> bool.
+          Return value True indicates a failure in the underlying function.
+
+        :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
+
+          If an Exception type or iterable of Exception types, the failure predicate will return True when a thrown exception type
+           matches one of the provided types.
+
+          If a predicate function, it will just be returned as is.
+
+         :return: callable (Type[Exception], Exception) -> bool
+    """
+
+    if isclass(expected_exception) and issubclass(expected_exception, Exception):
+        def check_exception(thrown_type, _):
+            return issubclass(thrown_type, expected_exception)
+        failure_predicate = check_exception
+    else:
+        try:
+             # Check for an iterable of Exception types
+            iter(expected_exception)
+
+            # guard against a surprise later
+            assert not isinstance(expected_exception, STRING_TYPES), "expected_exception cannot be a string. Did you mean name?"
+            failure_predicate = in_exception_list(*expected_exception)
+        except TypeError:
+            # not iterable. guess that it's a predicate function
+            assert callable(expected_exception) and not isclass(expected_exception), "expected_exception does not look like a predicate"
+            failure_predicate = expected_exception
+    return failure_predicate
 
 
 class CircuitBreaker(object):
     FAILURE_THRESHOLD = 5
     RECOVERY_TIMEOUT = 30
-    EXPECTED_EXCEPTION = Exception
     FALLBACK_FUNCTION = None
 
     def __init__(self,
@@ -31,12 +77,28 @@ class CircuitBreaker(object):
                  recovery_timeout=None,
                  expected_exception=None,
                  name=None,
-                 fallback_function=None):
+                 fallback_function=None
+                 ):
+        """
+        Construct a circuit breaker.
+
+        :param failure_threshold: break open after this many failures
+        :param recovery_timeout: close after this many seconds
+        :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
+        :param name: name for this circuitbreaker
+        :param fallback_function: called when the circuit is opened
+
+           :return: Circuitbreaker instance
+           :rtype: Circuitbreaker
+        """
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
-        self._expected_exception = expected_exception or self.EXPECTED_EXCEPTION
+
+        # auto-construct a failure predicate, depending on the type of the 'expected_exception' param
+        self.is_failure = build_failure_predicate(expected_exception or Exception)
+
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
         self._state = STATE_CLOSED
@@ -49,7 +111,7 @@ class CircuitBreaker(object):
         return None
 
     def __exit__(self, exc_type, exc_value, _traceback):
-        if exc_type and issubclass(exc_type, self._expected_exception):
+        if exc_type and self.is_failure(exc_type, exc_value):
             # exception was raised and is our concern
             self._last_failure = exc_value
             self.__call_failed()

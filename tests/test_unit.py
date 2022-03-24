@@ -7,6 +7,10 @@ from pytest import raises
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
 
+class FooError(Exception): 
+    def __init__(self, val=None):
+        self.val = val
+
 
 def test_circuitbreaker__str__():
     cb = CircuitBreaker(name='Foobar')
@@ -99,17 +103,60 @@ def test_circuit_decorator_without_args(circuitbreaker_mock):
     circuitbreaker_mock.assert_called_once_with(function)
 
 
-@patch('circuitbreaker.CircuitBreaker.__init__')
-def test_circuit_decorator_with_args(circuitbreaker_mock):
+def test_circuit_decorator_with_args():
     def function_fallback():
         return True
 
-    circuitbreaker_mock.return_value = None
-    circuit(10, 20, KeyError, 'foobar', function_fallback)
-    circuitbreaker_mock.assert_called_once_with(
-        expected_exception=KeyError,
-        failure_threshold=10,
-        recovery_timeout=20,
-        name='foobar',
-        fallback_function=function_fallback
-    )
+    breaker = circuit(10, 20, KeyError, 'foobar', function_fallback)
+
+    assert breaker.is_failure(KeyError, None)
+    assert not breaker.is_failure(Exception, None)
+    assert not breaker.is_failure(FooError, None)
+    assert breaker._failure_threshold == 10
+    assert breaker._recovery_timeout == 20
+    assert breaker._name == "foobar"
+    assert breaker._fallback_function == function_fallback
+
+def test_breaker_expected_exception_is_predicate():
+    def is_four_foo(thrown_type, thrown_value):
+        return thrown_value.val == 4
+
+    breaker_four = circuit(expected_exception=is_four_foo)
+
+    assert breaker_four.is_failure(FooError, FooError(4))
+    assert not breaker_four.is_failure(FooError, FooError(2))
+
+def test_breaker_default_constructor_traps_Exception():
+
+    breaker = circuit()
+    assert breaker.is_failure(Exception, Exception())
+    assert breaker.is_failure(FooError, FooError())
+
+
+def test_breaker_expected_exception_is_custom_exception():
+
+    breaker = circuit(expected_exception=FooError)
+    assert breaker.is_failure(FooError, FooError())
+    assert not breaker.is_failure(Exception, Exception())
+
+def test_breaker_constructor_expected_exception_is_exception_list():
+
+    class BarError(Exception): pass
+
+    breaker = circuit(expected_exception=(FooError, BarError))
+    assert breaker.is_failure(FooError, FooError())
+    assert breaker.is_failure(BarError, BarError())
+    assert not breaker.is_failure(Exception, Exception())
+
+def test_constructor_mistake_name_bytes():
+    with raises(AssertionError, match="expected_exception cannot be a string *"):
+        breaker = circuit(10, 20, b"foobar")
+
+def test_constructor_mistake_name_unicode():
+    with raises(AssertionError , match="expected_exception cannot be a string *"):
+        breaker = circuit(10, 20, u"foobar")
+
+def test_constructor_mistake_expected_exception():
+    class Widget: pass
+    with raises(AssertionError , match="expected_exception does not look like a predicate*"):
+        breaker = circuit(10, 20, expected_exception=Widget)
