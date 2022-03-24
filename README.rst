@@ -58,12 +58,14 @@ end is unavailable. So e.g. if there is an ``ConnectionError`` or a request ``Ti
 
 If you are e.g. using the requests library (https://docs.python-requests.org/) for making HTTP calls,
 its ``RequestException`` class would be a great choice for the ``expected_exception`` parameter.
+The logic for treating thrown exceptions as failures can also be customized by passing a callable.
 
 All recognized exceptions will be re-raised anyway, but the goal is, to let the circuit breaker only
 recognize those exceptions which are related to the communication to your integration point.
 
 When it comes to monitoring (see Monitoring_), it may lead to falsy conclusions, if a
 circuit breaker opened, due to a local ``OSError`` or ``KeyError``, etc.
+
 
 
 Configuration
@@ -90,7 +92,30 @@ You can adjust this value with the ``recovery_timeout`` parameter.
 expected exception
 ==================
 By default, the circuit breaker listens for all exceptions which are based on the ``Exception`` class.
-You can adjust this with the ``expected_exception`` parameter. It can be either an exception class or a tuple of exception classes.
+You can adjust this with the ``expected_exception`` parameter. It can be either an exception class, an iterable of an exception classes,
+or a callable.
+
+Use a callable if the logic for treating an exception needs to be customized beyond just checking the type. For example::
+
+    # Assume we are using the requests library
+    def is_not_http_error(thrown_type, thrown_value):
+        return isinstance(thrown_type, RequestException) and not isinstance(thrown_type, HTTPError)
+
+    def is_rate_limited(thrown_type, thrown_value):
+        return isinstance(thrown_type, HTTPError) and thrown_value.status_code == 429
+
+    @circuit(expected_exception=is_not_http_error)
+    def call_flaky_api(...):
+        rsp = requests.get(...)
+        rsp.raise_for_status()
+        return rsp
+
+    @circuit(expected_exception=is_rate_limited)
+    def call_slow_server(...):
+        rsp = requests.get(...)
+        rsp.raise_for_status()
+        return rsp
+        ```
 
 name
 ====
@@ -112,7 +137,9 @@ you can extend the ``CircuitBreaker`` class and create your own circuit breaker 
     class MyCircuitBreaker(CircuitBreaker):
         FAILURE_THRESHOLD = 10
         RECOVERY_TIMEOUT = 60
-        EXPECTED_EXCEPTION = RequestException
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(expected_exception=RequestException, *args, **kwargs)
 
 
 Now you have two options to apply your circuit breaker to a function. As an Object directly::
