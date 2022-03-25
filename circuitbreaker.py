@@ -49,9 +49,7 @@ def build_failure_predicate(expected_exception):
     """
 
     if isclass(expected_exception) and issubclass(expected_exception, Exception):
-        def check_exception(thrown_type, _):
-            return issubclass(thrown_type, expected_exception)
-        failure_predicate = check_exception
+        failure_predicate = in_exception_list(expected_exception)
     else:
         try:
              # Check for an iterable of Exception types
@@ -70,6 +68,7 @@ def build_failure_predicate(expected_exception):
 class CircuitBreaker(object):
     FAILURE_THRESHOLD = 5
     RECOVERY_TIMEOUT = 30
+    EXPECTED_EXCEPTION = Exception
     FALLBACK_FUNCTION = None
 
     def __init__(self,
@@ -96,8 +95,19 @@ class CircuitBreaker(object):
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
 
-        # auto-construct a failure predicate, depending on the type of the 'expected_exception' param
-        self.is_failure = build_failure_predicate(expected_exception or Exception)
+        # Build the failure predicate. In order of precedence, prefer the
+        # * the constructor argument
+        # * the subclass attribute EXPECTED_EXCEPTION
+        # * the CircuitBreaker attribute EXPECTED_EXCEPTION
+        if not expected_exception:
+            try:
+                # Introspect our final type, then grab the  value via __dict__ to avoid python Descriptor magic
+                #  in the case where it's a callable function.
+                expected_exception = type(self).__dict__["EXPECTED_EXCEPTION"]
+            except KeyError:
+                expected_exception = CircuitBreaker.EXPECTED_EXCEPTION
+
+        self.is_failure = build_failure_predicate(expected_exception)
 
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
