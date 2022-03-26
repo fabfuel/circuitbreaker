@@ -9,7 +9,7 @@ def readme():
         return f.read()
 
 
-dependencies = ["typing; python_version < '3.5'"]
+dependencies = ["typing; python_version < '3.5'", "monotonic; python_version < '3.0'"]
 
 setup(
     name='circuitbreaker',

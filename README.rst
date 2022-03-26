@@ -4,14 +4,8 @@ CircuitBreaker
 .. image:: https://badge.fury.io/py/circuitbreaker.svg
     :target: https://badge.fury.io/py/circuitbreaker
 
-.. image:: https://travis-ci.com/fabfuel/circuitbreaker.svg?branch=develop
-    :target: https://travis-ci.com/github/fabfuel/circuitbreaker
-
-.. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/coverage.png?b=master
-    :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
-
-.. image:: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker/badges/quality-score.png?b=master
-    :target: https://scrutinizer-ci.com/g/fabfuel/circuitbreaker
+.. image:: https://github.com/fabfuel/circuitbreaker/actions/workflows/build.yml/badge.svg
+    :target: https://github.com/fabfuel/circuitbreaker/actions/workflows/build.yml
 
 This is a Python implementation of the "Circuit Breaker" Pattern (https://martinfowler.com/bliki/CircuitBreaker.html).
 Inspired by Michael T. Nygard's highly recommendable book *Release It!* (https://pragprog.com/titles/mnee2/release-it-second-edition/).
@@ -65,6 +59,10 @@ end is unavailable. So e.g. if there is an ``ConnectionError`` or a request ``Ti
 If you are e.g. using the requests library (https://docs.python-requests.org/) for making HTTP calls,
 its ``RequestException`` class would be a great choice for the ``expected_exception`` parameter.
 
+The logic for treating thrown exceptions as failures can also be customized by passing a callable. The
+callable will be passed the exception type and value, and should return True if the exception should be
+treated as a failure.
+
 All recognized exceptions will be re-raised anyway, but the goal is, to let the circuit breaker only
 recognize those exceptions which are related to the communication to your integration point.
 
@@ -96,7 +94,30 @@ You can adjust this value with the ``recovery_timeout`` parameter.
 expected exception
 ==================
 By default, the circuit breaker listens for all exceptions which are based on the ``Exception`` class.
-You can adjust this with the ``expected_exception`` parameter. It can be either an exception class or a tuple of exception classes.
+You can adjust this with the ``expected_exception`` parameter. It can be either an exception class, an iterable of an exception classes,
+or a callable.
+
+Use a callable if the logic to flag exceptions as failures is more complex than a type check. For example::
+
+    # Assume we are using the requests library
+    def is_not_http_error(thrown_type, thrown_value):
+        return issubclass(thrown_type, RequestException) and not issubclass(thrown_type, HTTPError)
+
+    def is_rate_limited(thrown_type, thrown_value):
+        return issubclass(thrown_type, HTTPError) and thrown_value.status_code == 429
+
+    @circuit(expected_exception=is_not_http_error)
+    def call_flaky_api(...):
+        rsp = requests.get(...)
+        rsp.raise_for_status()
+        return rsp
+
+    @circuit(expected_exception=is_rate_limited)
+    def call_slow_server(...):
+        rsp = requests.get(...)
+        rsp.raise_for_status()
+        return rsp
+        ```
 
 name
 ====
