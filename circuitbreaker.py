@@ -51,15 +51,17 @@ def build_failure_predicate(expected_exception):
         failure_predicate = in_exception_list(expected_exception)
     else:
         try:
-             # Check for an iterable of Exception types
+            # Check for an iterable of Exception types
             iter(expected_exception)
 
             # guard against a surprise later
-            assert not isinstance(expected_exception, STRING_TYPES), "expected_exception cannot be a string. Did you mean name?"
+            if isinstance(expected_exception, STRING_TYPES):
+                raise ValueError("expected_exception cannot be a string. Did you mean name?")
             failure_predicate = in_exception_list(*expected_exception)
         except TypeError:
             # not iterable. guess that it's a predicate function
-            assert callable(expected_exception) and not isclass(expected_exception), "expected_exception does not look like a predicate"
+            if not callable(expected_exception) or isclass(expected_exception):
+                raise ValueError("expected_exception does not look like a predicate")
             failure_predicate = expected_exception
     return failure_predicate
 

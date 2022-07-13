@@ -149,16 +149,16 @@ def test_breaker_constructor_expected_exception_is_exception_list():
     assert not breaker.is_failure(Exception, Exception())
 
 def test_constructor_mistake_name_bytes():
-    with raises(AssertionError, match="expected_exception cannot be a string *"):
+    with raises(ValueError, match="expected_exception cannot be a string *"):
         breaker = circuit(10, 20, b"foobar")
 
 def test_constructor_mistake_name_unicode():
-    with raises(AssertionError , match="expected_exception cannot be a string *"):
+    with raises(ValueError, match="expected_exception cannot be a string *"):
         breaker = circuit(10, 20, u"foobar")
 
 def test_constructor_mistake_expected_exception():
     class Widget: pass
-    with raises(AssertionError , match="expected_exception does not look like a predicate*"):
+    with raises(ValueError, match="expected_exception does not look like a predicate*"):
         breaker = circuit(10, 20, expected_exception=Widget)
 
 def test_advanced_usage_circuitbreaker_subclass():
