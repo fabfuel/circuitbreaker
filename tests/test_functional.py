@@ -1,6 +1,10 @@
 from time import sleep
 
-from mock.mock import patch, Mock
+try:
+    from unittest.mock import Mock, patch
+except ImportError:
+    from mock import Mock, patch
+
 from pytest import raises
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, \
@@ -18,6 +22,13 @@ def circuit_success():
 
 @CircuitBreaker(failure_threshold=1, name="circuit_failure")
 def circuit_failure():
+    raise IOError()
+
+
+@CircuitBreaker(failure_threshold=1, name="circuit_generator_failure")
+def circuit_generator_failure():
+    pseudo_remote_call()
+    yield 1
     raise IOError()
 
 
@@ -42,16 +53,16 @@ def test_circuit_pass_through():
 
 def test_circuitbreaker_monitor():
     assert CircuitBreakerMonitor.all_closed() is True
-    assert len(list(CircuitBreakerMonitor.get_circuits())) == 5
-    assert len(list(CircuitBreakerMonitor.get_closed())) == 5
+    assert len(list(CircuitBreakerMonitor.get_circuits())) == 6
+    assert len(list(CircuitBreakerMonitor.get_closed())) == 6
     assert len(list(CircuitBreakerMonitor.get_open())) == 0
 
     with raises(IOError):
         circuit_failure()
 
     assert CircuitBreakerMonitor.all_closed() is False
-    assert len(list(CircuitBreakerMonitor.get_circuits())) == 5
-    assert len(list(CircuitBreakerMonitor.get_closed())) == 4
+    assert len(list(CircuitBreakerMonitor.get_circuits())) == 6
+    assert len(list(CircuitBreakerMonitor.get_closed())) == 5
     assert len(list(CircuitBreakerMonitor.get_open())) == 1
 
 
@@ -71,7 +82,7 @@ def test_threshold_hit_prevents_consequent_calls(mock_remote):
     with raises(CircuitBreakerError):
         circuit_threshold_1()
 
-    mock_remote.assert_called_once()
+    mock_remote.assert_called_once_with()
 
 
 @patch('test_functional.pseudo_remote_call', return_value=True)
@@ -218,3 +229,20 @@ def test_circuitbreaker_reopens_after_successful_calls(mock_remote):
     assert circuit_threshold_2_timeout_1()
     assert circuit_threshold_2_timeout_1()
     assert circuit_threshold_2_timeout_1()
+
+
+@patch("test_functional.pseudo_remote_call", return_value=True)
+def test_circuitbreaker_handles_generator_functions(mock_remote):
+    # type: (Mock) -> None
+    circuitbreaker = CircuitBreakerMonitor.get("circuit_generator_failure")
+    assert circuitbreaker.closed
+
+    with raises(IOError):
+        list(circuit_generator_failure())
+
+    assert circuitbreaker.opened
+
+    with raises(CircuitBreakerError):
+        list(circuit_generator_failure())
+
+    mock_remote.assert_called_once_with()

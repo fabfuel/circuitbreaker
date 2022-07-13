@@ -9,11 +9,11 @@ def readme():
         return f.read()
 
 
-dependencies = ["typing; python_version < '3.5'"]
+dependencies = ["typing; python_version < '3.5'", "monotonic; python_version < '3.0'"]
 
 setup(
     name='circuitbreaker',
-    version='1.3.2',
+    version='1.4.0',
     url='https://github.com/fabfuel/circuitbreaker',
     download_url='https://github.com/fabfuel/circuitbreaker/archive/1.3.1.tar.gz',
     license='BSD-3-Clause',

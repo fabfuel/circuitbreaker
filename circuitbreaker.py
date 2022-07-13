@@ -6,11 +6,67 @@ from __future__ import absolute_import
 
 from functools import wraps
 from datetime import datetime, timedelta
+from inspect import isgeneratorfunction, isclass
 from typing import AnyStr, Iterable
+from math import ceil, floor
+
+try:
+    from time import monotonic
+except ImportError:
+    from monotonic import monotonic
+
+# Python2 vs Python3 strings
+try:
+    STRING_TYPES = (basestring,)
+except NameError:
+    STRING_TYPES = (bytes, str)
 
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
+
+
+def in_exception_list(*exc_types):
+    """Build a predicate function that checks if an exception is a subtype from a list"""
+
+    def matches_types(thrown_type, _):
+        return issubclass(thrown_type, exc_types)
+
+    return matches_types
+
+
+def build_failure_predicate(expected_exception):
+    """ Build a failure predicate_function.
+          The returned function has the signature (Type[Exception], Exception) -> bool.
+          Return value True indicates a failure in the underlying function.
+
+        :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
+
+          If an Exception type or iterable of Exception types, the failure predicate will return True when a thrown
+          exception type matches one of the provided types.
+
+          If a predicate function, it will just be returned as is.
+
+         :return: callable (Type[Exception], Exception) -> bool
+    """
+
+    if isclass(expected_exception) and issubclass(expected_exception, Exception):
+        failure_predicate = in_exception_list(expected_exception)
+    else:
+        try:
+            # Check for an iterable of Exception types
+            iter(expected_exception)
+
+            # guard against a surprise later
+            if isinstance(expected_exception, STRING_TYPES):
+                raise ValueError("expected_exception cannot be a string. Did you mean name?")
+            failure_predicate = in_exception_list(*expected_exception)
+        except TypeError:
+            # not iterable. guess that it's a predicate function
+            if not callable(expected_exception) or isclass(expected_exception):
+                raise ValueError("expected_exception does not look like a predicate")
+            failure_predicate = expected_exception
+    return failure_predicate
 
 
 class CircuitBreaker(object):
@@ -24,32 +80,83 @@ class CircuitBreaker(object):
                  recovery_timeout=None,
                  expected_exception=None,
                  name=None,
-                 fallback_function=None):
+                 fallback_function=None
+                 ):
+        """
+        Construct a circuit breaker.
+
+        :param failure_threshold: break open after this many failures
+        :param recovery_timeout: close after this many seconds
+        :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
+        :param name: name for this circuitbreaker
+        :param fallback_function: called when the circuit is opened
+
+           :return: Circuitbreaker instance
+           :rtype: Circuitbreaker
+        """
         self._last_failure = None
         self._failure_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
-        self._expected_exception = expected_exception or self.EXPECTED_EXCEPTION
+
+        # Build the failure predicate. In order of precedence, prefer the
+        # * the constructor argument
+        # * the subclass attribute EXPECTED_EXCEPTION
+        # * the CircuitBreaker attribute EXPECTED_EXCEPTION
+        if not expected_exception:
+            try:
+                # Introspect our final type, then grab the  value via __dict__ to avoid python Descriptor magic
+                #  in the case where it's a callable function.
+                expected_exception = type(self).__dict__["EXPECTED_EXCEPTION"]
+            except KeyError:
+                expected_exception = CircuitBreaker.EXPECTED_EXCEPTION
+
+        self.is_failure = build_failure_predicate(expected_exception)
+
         self._fallback_function = fallback_function or self.FALLBACK_FUNCTION
         self._name = name
         self._state = STATE_CLOSED
-        self._opened = datetime.utcnow()
+        self._opened = monotonic()
 
     def __call__(self, wrapped):
         return self.decorate(wrapped)
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc_value, _traceback):
+        if exc_type and self.is_failure(exc_type, exc_value):
+            # exception was raised and is our concern
+            self._last_failure = exc_value
+            self.__call_failed()
+        else:
+            self.__call_succeeded()
+        return False  # return False to raise exception if any
 
     def decorate(self, function):
         """
         Applies the circuit breaker to a function
         """
         if self._name is None:
-            self._name = function.__name__
+            try:
+                self._name = function.__qualname__
+            except AttributeError:
+                self._name = function.__name__
 
         CircuitBreakerMonitor.register(self)
 
+        if isgeneratorfunction(function):
+            call = self.call_generator
+        else:
+            call = self.call
+
         @wraps(function)
         def wrapper(*args, **kwargs):
-            return self.call(function, *args, **kwargs)
+            if self.opened:
+                if self.fallback_function:
+                    return self.fallback_function(*args, **kwargs)
+                raise CircuitBreakerError(self)
+            return call(function, *args, **kwargs)
 
         return wrapper
 
@@ -59,19 +166,18 @@ class CircuitBreaker(object):
         rules on success or failure
         :param func: Decorated function
         """
-        if self.opened:
-            if self.fallback_function:
-                return self.fallback_function(*args, **kwargs)
-            raise CircuitBreakerError(self)
-        try:
-            result = func(*args, **kwargs)
-        except self._expected_exception as e:
-            self._last_failure = e
-            self.__call_failed()
-            raise
+        with self:
+            return func(*args, **kwargs)
 
-        self.__call_succeeded()
-        return result
+    def call_generator(self, func, *args, **kwargs):
+        """
+        Calls the decorated generator function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated generator function
+        """
+        with self:
+            for el in func(*args, **kwargs):
+                yield el
 
     def __call_succeeded(self):
         """
@@ -88,7 +194,7 @@ class CircuitBreaker(object):
         self._failure_count += 1
         if self._failure_count >= self._failure_threshold:
             self._state = STATE_OPEN
-            self._opened = datetime.utcnow()
+            self._opened = monotonic()
 
     @property
     def state(self):
@@ -99,10 +205,10 @@ class CircuitBreaker(object):
     @property
     def open_until(self):
         """
-        The datetime, when the circuit breaker will try to recover
+        The approximate datetime when the circuit breaker will try to recover
         :return: datetime
         """
-        return self._opened + timedelta(seconds=self._recovery_timeout)
+        return datetime.utcnow() + timedelta(seconds=self.open_remaining)
 
     @property
     def open_remaining(self):
@@ -110,7 +216,8 @@ class CircuitBreaker(object):
         Number of seconds remaining, the circuit breaker stays in OPEN state
         :return: int
         """
-        return (self.open_until - datetime.utcnow()).total_seconds()
+        remain = (self._opened + self._recovery_timeout) - monotonic()
+        return ceil(remain) if remain > 0 else floor(remain)
 
     @property
     def failure_count(self):
@@ -204,7 +311,6 @@ def circuit(failure_threshold=None,
             name=None,
             fallback_function=None,
             cls=CircuitBreaker):
-
     # if the decorator is used without parameters, the
     # wrapped function is provided as first argument
     if callable(failure_threshold):
