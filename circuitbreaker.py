@@ -17,7 +17,6 @@ except ImportError:
 
 # Python2 vs Python3 strings
 try:
-    basestring
     STRING_TYPES = (basestring, )
 except NameError:
     STRING_TYPES = (bytes, str)
