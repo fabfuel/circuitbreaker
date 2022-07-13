@@ -17,20 +17,23 @@ except ImportError:
 
 # Python2 vs Python3 strings
 try:
-    STRING_TYPES = (basestring, )
+    STRING_TYPES = (basestring,)
 except NameError:
     STRING_TYPES = (bytes, str)
-
 
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
 
+
 def in_exception_list(*exc_types):
     """Build a predicate function that checks if an exception is a subtype from a list"""
+
     def matches_types(thrown_type, _):
         return issubclass(thrown_type, exc_types)
+
     return matches_types
+
 
 def build_failure_predicate(expected_exception):
     """ Build a failure predicate_function.
@@ -308,7 +311,6 @@ def circuit(failure_threshold=None,
             name=None,
             fallback_function=None,
             cls=CircuitBreaker):
-
     # if the decorator is used without parameters, the
     # wrapped function is provided as first argument
     if callable(failure_threshold):
