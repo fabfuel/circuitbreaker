@@ -42,8 +42,8 @@ def build_failure_predicate(expected_exception):
 
         :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
 
-          If an Exception type or iterable of Exception types, the failure predicate will return True when a thrown exception type
-           matches one of the provided types.
+          If an Exception type or iterable of Exception types, the failure predicate will return True when a thrown
+          exception type matches one of the provided types.
 
           If a predicate function, it will just be returned as is.
 
