@@ -17,21 +17,23 @@ except ImportError:
 
 # Python2 vs Python3 strings
 try:
-    basestring
-    STRING_TYPES = (basestring, )
+    STRING_TYPES = (basestring,)
 except NameError:
     STRING_TYPES = (bytes, str)
-
 
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
 
+
 def in_exception_list(*exc_types):
     """Build a predicate function that checks if an exception is a subtype from a list"""
+
     def matches_types(thrown_type, _):
         return issubclass(thrown_type, exc_types)
+
     return matches_types
+
 
 def build_failure_predicate(expected_exception):
     """ Build a failure predicate_function.
@@ -40,8 +42,8 @@ def build_failure_predicate(expected_exception):
 
         :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
 
-          If an Exception type or iterable of Exception types, the failure predicate will return True when a thrown exception type
-           matches one of the provided types.
+          If an Exception type or iterable of Exception types, the failure predicate will return True when a thrown
+          exception type matches one of the provided types.
 
           If a predicate function, it will just be returned as is.
 
@@ -52,15 +54,17 @@ def build_failure_predicate(expected_exception):
         failure_predicate = in_exception_list(expected_exception)
     else:
         try:
-             # Check for an iterable of Exception types
+            # Check for an iterable of Exception types
             iter(expected_exception)
 
             # guard against a surprise later
-            assert not isinstance(expected_exception, STRING_TYPES), "expected_exception cannot be a string. Did you mean name?"
+            if isinstance(expected_exception, STRING_TYPES):
+                raise ValueError("expected_exception cannot be a string. Did you mean name?")
             failure_predicate = in_exception_list(*expected_exception)
         except TypeError:
             # not iterable. guess that it's a predicate function
-            assert callable(expected_exception) and not isclass(expected_exception), "expected_exception does not look like a predicate"
+            if not callable(expected_exception) or isclass(expected_exception):
+                raise ValueError("expected_exception does not look like a predicate")
             failure_predicate = expected_exception
     return failure_predicate
 
@@ -307,7 +311,6 @@ def circuit(failure_threshold=None,
             name=None,
             fallback_function=None,
             cls=CircuitBreaker):
-
     # if the decorator is used without parameters, the
     # wrapped function is provided as first argument
     if callable(failure_threshold):
