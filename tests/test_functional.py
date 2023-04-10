@@ -1,5 +1,4 @@
-import asyncio
-import time
+from asyncio import sleep
 
 import pytest
 
@@ -54,7 +53,7 @@ async def test_threshold_hit_prevents_consequent_calls(
 
 
 async def test_circuitbreaker_recover_half_open(
-    is_async, sync_or_async, mock_remote_call, circuit_threshold_3_timeout_1
+    sync_or_async, mock_remote_call, circuit_threshold_3_timeout_1
 ):
     circuitbreaker = CircuitBreakerMonitor.get('threshold_3')
 
@@ -107,10 +106,7 @@ async def test_circuitbreaker_recover_half_open(
     assert 0 < circuitbreaker.open_remaining <= 1
 
     # wait for 1 second (recover timeout)
-    if is_async:
-        await asyncio.sleep(1)
-    else:
-        time.sleep(1)
+    await sleep(1)
 
     # circuit half-open -> next call will be passed through
     assert not circuitbreaker.closed
@@ -130,7 +126,7 @@ async def test_circuitbreaker_recover_half_open(
 
 
 async def test_circuitbreaker_reopens_after_successful_calls(
-    is_async, sync_or_async, mock_remote_call, circuit_threshold_2_timeout_1
+    sync_or_async, mock_remote_call, circuit_threshold_2_timeout_1
 ):
     circuitbreaker = CircuitBreakerMonitor.get('threshold_2')
 
@@ -182,10 +178,7 @@ async def test_circuitbreaker_reopens_after_successful_calls(
     assert 0 < circuitbreaker.open_remaining <= 1
 
     # wait for 1 second (recover timeout)
-    if is_async:
-        await asyncio.sleep(1)
-    else:
-        time.sleep(1)
+    await sleep(1)
 
     # circuit half-open -> next call will be passed through
     assert not circuitbreaker.closed
