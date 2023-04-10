@@ -1,4 +1,4 @@
-import asyncio
+from asyncio import sleep
 
 try:
     from unittest.mock import Mock, patch
@@ -137,7 +137,7 @@ async def test_circuitbreaker_recover_half_open(mock_remote):
     assert 0 < circuitbreaker.open_remaining <= 1
 
     # wait for 1 second (recover timeout)
-    await asyncio.sleep(1)
+    await sleep(1)
 
     # circuit half-open -> next call will be passed through
     assert not circuitbreaker.closed
@@ -209,7 +209,7 @@ async def test_circuitbreaker_reopens_after_successful_calls(mock_remote):
     assert 0 < circuitbreaker.open_remaining <= 1
 
     # wait for 1 second (recover timeout)
-    await asyncio.sleep(1)
+    await sleep(1)
 
     # circuit half-open -> next call will be passed through
     assert not circuitbreaker.closed
