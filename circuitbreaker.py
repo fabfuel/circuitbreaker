@@ -7,6 +7,7 @@ from __future__ import absolute_import
 from functools import wraps
 from datetime import datetime, timedelta
 from inspect import isgeneratorfunction, isclass
+from inspect import iscoroutinefunction, isasyncgenfunction
 from typing import AnyStr, Iterable
 from math import ceil, floor
 
@@ -145,6 +146,12 @@ class CircuitBreaker(object):
 
         CircuitBreakerMonitor.register(self)
 
+        if iscoroutinefunction(function) or isasyncgenfunction(function):
+            return self._decorate_async(function)
+
+        return self._decorate_sync(function)
+
+    def _decorate_sync(self, function):
         if isgeneratorfunction(function):
             call = self.call_generator
         else:
@@ -159,6 +166,31 @@ class CircuitBreaker(object):
             return call(function, *args, **kwargs)
 
         return wrapper
+
+    def _decorate_async(self, function):
+
+        async def opened_dispatch(*args, **kwargs):
+            if iscoroutinefunction(self.fallback_function):
+                return await self.fallback_function(*args, **kwargs)  # TODO: test
+            elif self.fallback_function:
+                return self.fallback_function(*args, **kwargs)
+            raise CircuitBreakerError(self)
+
+        @wraps(function)
+        async def async_wrapper(*args, **kwargs):
+            if self.opened:
+                return await opened_dispatch(*args, **kwargs)
+            return await self.call_async(function, *args, **kwargs)
+
+        @wraps(function)
+        async def async_gen_wrapper(*args, **kwargs):
+            if self.opened:
+                yield await opened_dispatch(*args, **kwargs)
+                return
+            async for el in self.call_async_generator(function, *args, **kwargs):
+                yield el
+
+        return async_gen_wrapper if isasyncgenfunction(function) else async_wrapper
 
     def call(self, func, *args, **kwargs):
         """
@@ -177,6 +209,25 @@ class CircuitBreaker(object):
         """
         with self:
             for el in func(*args, **kwargs):
+                yield el
+
+    async def call_async(self, func, *args, **kwargs):
+        """
+        Calls the decorated async function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated function
+        """
+        with self:
+            return await func(*args, **kwargs)
+
+    async def call_async_generator(self, func, *args, **kwargs):
+        """
+        Calls the decorated async generator function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated generator function
+        """
+        with self:
+            async for el in func(*args, **kwargs):
                 yield el
 
     def __call_succeeded(self):
