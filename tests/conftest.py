@@ -21,6 +21,15 @@ def is_async(request, clean_circuit_breaker_monitor):
 
 
 @pytest.fixture
+async def sync_or_async(is_async):
+    async def _sync(value):
+        return value
+    async def _async(coro):
+        return await coro
+    return _async if is_async else _sync
+
+
+@pytest.fixture
 async def mock_remote_call(is_async, mocker):
     mock_function = mocker.async_stub() if is_async else mocker.stub()
     mock_function.return_value = True
