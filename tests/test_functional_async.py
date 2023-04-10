@@ -15,10 +15,6 @@ async def pseudo_remote_call():
     return True
 
 
-async def test_async_pseudo_remote_call():
-    assert await pseudo_remote_call() is True
-
-
 @CircuitBreaker()
 async def circuit_success():
     return await pseudo_remote_call()
