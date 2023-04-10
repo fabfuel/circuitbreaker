@@ -21,29 +21,24 @@ def is_async(request, clean_circuit_breaker_monitor):
 
 
 @pytest.fixture
-async def pseudo_remote_call(is_async):
-    if is_async:
-        async def pseudo_remote_call():
-            return True
-    else:
-        def pseudo_remote_call():
-            return True
-
-    return pseudo_remote_call
+async def mock_remote_call(is_async, mocker):
+    mock_function = mocker.async_stub() if is_async else mocker.stub()
+    mock_function.return_value = True
+    return mock_function
 
 
 @pytest.fixture
-def circuit_success(is_async, pseudo_remote_call):
+def circuit_success(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker()
         @overwrite_qualname("circuit_success")
         async def circuit_function():
-            return await pseudo_remote_call()
+            return await mock_remote_call()
     else:
         @CircuitBreaker()
         @overwrite_qualname("circuit_success")
         def circuit_function():
-            return pseudo_remote_call()
+            return mock_remote_call()
 
     return circuit_function
 
@@ -63,17 +58,17 @@ def circuit_failure(is_async):
 
 
 @pytest.fixture
-def circuit_generator_failure(is_async, pseudo_remote_call):
+def circuit_generator_failure(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker(failure_threshold=1, name="circuit_generator_failure")
         async def circuit_function():
-            await pseudo_remote_call()
+            await mock_remote_call()
             yield 1
             raise IOError()
     else:
         @CircuitBreaker(failure_threshold=1, name="circuit_generator_failure")
         def circuit_function():
-            pseudo_remote_call()
+            mock_remote_call()
             yield 1
             raise IOError()
 
@@ -81,41 +76,41 @@ def circuit_generator_failure(is_async, pseudo_remote_call):
 
 
 @pytest.fixture
-def circuit_threshold_1(is_async, pseudo_remote_call):
+def circuit_threshold_1(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker(failure_threshold=1, name="threshold_1")
         async def circuit_function():
-            return await pseudo_remote_call()
+            return await mock_remote_call()
     else:
         @CircuitBreaker(failure_threshold=1, name="threshold_1")
         def circuit_function():
-            return pseudo_remote_call()
+            return mock_remote_call()
 
     return circuit_function
 
 @pytest.fixture
-def circuit_threshold_2_timeout_1(is_async, pseudo_remote_call):
+def circuit_threshold_2_timeout_1(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker(failure_threshold=2, recovery_timeout=1, name="threshold_2")
         async def circuit_function():
-            return await pseudo_remote_call()
+            return await mock_remote_call()
     else:
         @CircuitBreaker(failure_threshold=2, recovery_timeout=1, name="threshold_2")
         def circuit_function():
-            return pseudo_remote_call()
+            return mock_remote_call()
 
     return circuit_function
 
 
 @pytest.fixture
-def circuit_threshold_3_timeout_1(is_async, pseudo_remote_call):
+def circuit_threshold_3_timeout_1(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker(failure_threshold=3, recovery_timeout=1, name="threshold_3")
         async def circuit_function():
-            return await pseudo_remote_call()
+            return await mock_remote_call()
     else:
         @CircuitBreaker(failure_threshold=3, recovery_timeout=1, name="threshold_3")
         def circuit_function():
-            return pseudo_remote_call()
+            return mock_remote_call()
 
     return circuit_function
