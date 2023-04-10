@@ -97,6 +97,7 @@ def circuit_threshold_1(is_async, mock_remote_call):
 
     return circuit_function
 
+
 @pytest.fixture
 def circuit_threshold_2_timeout_1(is_async, mock_remote_call):
     if is_async:

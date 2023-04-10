@@ -62,7 +62,6 @@ async def test_circuitbreaker_recover_half_open(
     assert circuitbreaker.state == STATE_CLOSED
 
     # no exception -> success
-    mock_remote_call.return_value = True
     assert await sync_or_async(circuit_threshold_3_timeout_1())
 
     # from now all subsequent calls will fail
@@ -187,7 +186,7 @@ async def test_circuitbreaker_reopens_after_successful_calls(
     assert circuitbreaker.state == STATE_HALF_OPEN
 
     # successful call
-    await sync_or_async(circuit_threshold_2_timeout_1())
+    assert await sync_or_async(circuit_threshold_2_timeout_1())
 
     # circuit closed and reset'ed
     assert circuitbreaker.closed
@@ -195,9 +194,9 @@ async def test_circuitbreaker_reopens_after_successful_calls(
     assert circuitbreaker.failure_count == 0
 
     # some another successful calls
-    await sync_or_async(circuit_threshold_2_timeout_1())
-    await sync_or_async(circuit_threshold_2_timeout_1())
-    await sync_or_async(circuit_threshold_2_timeout_1())
+    assert await sync_or_async(circuit_threshold_2_timeout_1())
+    assert await sync_or_async(circuit_threshold_2_timeout_1())
+    assert await sync_or_async(circuit_threshold_2_timeout_1())
 
 
 async def test_circuitbreaker_handles_generator_functions(
