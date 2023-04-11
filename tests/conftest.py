@@ -17,6 +17,20 @@ def is_async(request):
 
 @pytest.fixture
 def sync_or_async(is_async):
+    """
+    This fixture helps abstract calls from other fixtures that have sync and
+    async versions - those that uses 'is_async' fixture.
+
+    For example, this:
+        if is_async:
+            await circuit_success()
+        else:
+            circuit_success()
+
+    Can be replaced with:
+        await sync_or_async(circuit_success())
+
+    """
     async def _sync(value):
         return value
 
