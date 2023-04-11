@@ -1,9 +1,4 @@
-try:
-    from unittest.mock import Mock, patch
-except ImportError:
-    from mock import Mock, patch
-
-from pytest import raises
+import pytest
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
 
@@ -37,7 +32,7 @@ async def test_circuitbreaker_should_save_last_exception_on_failure_call(
     cb = CircuitBreaker(name='Foobar')
 
     mock_remote_call.side_effect = IOError
-    with raises(IOError):
+    with pytest.raises(IOError):
         if is_async:
             await cb.call_async(remote_call_function)
         else:
@@ -62,9 +57,9 @@ async def test_circuitbreaker_should_clear_last_exception_on_success_call(
 
 
 async def test_circuitbreaker_should_call_fallback_function_if_open(
-    sync_or_async, remote_call_function
+    mocker, sync_or_async, remote_call_function
 ):
-    fallback = Mock(return_value=True)
+    fallback = mocker.Mock(return_value=True)
 
     CircuitBreaker.opened = lambda self: True
 
@@ -76,9 +71,9 @@ async def test_circuitbreaker_should_call_fallback_function_if_open(
 
 
 async def test_circuitbreaker_should_not_call_function_if_open(
-    sync_or_async, remote_call_function, mock_remote_call
+    mocker, sync_or_async, remote_call_function, mock_remote_call
 ):
-    fallback = Mock(return_value=True)
+    fallback = mocker.Mock(return_value=True)
 
     CircuitBreaker.opened = lambda self: True
 
@@ -90,9 +85,9 @@ async def test_circuitbreaker_should_not_call_function_if_open(
 
 
 async def test_circuitbreaker_call_fallback_function_with_parameters(
-    sync_or_async, remote_call_function
+    mocker, sync_or_async, remote_call_function
 ):
-    fallback = Mock(return_value=True)
+    fallback = mocker.Mock(return_value=True)
 
     cb = circuit(name='with_fallback', fallback_function=fallback)
 
@@ -158,12 +153,12 @@ def test_breaker_constructor_expected_exception_is_exception_list():
 
 
 def test_constructor_mistake_name_bytes():
-    with raises(ValueError, match="expected_exception cannot be a string *"):
+    with pytest.raises(ValueError, match="expected_exception cannot be a string *"):
         circuit(10, 20, b"foobar")
 
 
 def test_constructor_mistake_name_unicode():
-    with raises(ValueError, match="expected_exception cannot be a string *"):
+    with pytest.raises(ValueError, match="expected_exception cannot be a string *"):
         circuit(10, 20, u"foobar")
 
 
@@ -171,7 +166,7 @@ def test_constructor_mistake_expected_exception():
     class Widget:
         pass
 
-    with raises(ValueError, match="expected_exception does not look like a predicate*"):
+    with pytest.raises(ValueError, match="expected_exception does not look like a predicate*"):
         circuit(10, 20, expected_exception=Widget)
 
 
