@@ -175,7 +175,8 @@ class CircuitBreaker(object):
         @wraps(function)
         async def gen_awrapper(*args, **kwargs):
             if self.opened:
-                yield await self._opened_dispatch_async(*args, **kwargs)
+                async for el in self._opened_dispatch_async_generator(*args, **kwargs):
+                    yield el
                 return
             async for el in self.call_async_generator(function, *args, **kwargs):
                 yield el
@@ -191,6 +192,18 @@ class CircuitBreaker(object):
         if iscoroutinefunction(self.fallback_function):
             return await self.fallback_function(*args, **kwargs)
         return self._opened_dispatch(*args, **kwargs)
+
+    async def _opened_dispatch_async_generator(self, *args, **kwargs):
+        """
+        Note: unlike the sync version, it's not possible to return
+        "value or generator" because async generators can't just be awaited
+        (they must be consumed with 'async for'). 
+        """
+        if isasyncgenfunction(self.fallback_function):
+            async for el in self.fallback_function(*args, **kwargs):
+                yield el
+            return
+        yield await self._opened_dispatch_async(*args, **kwargs)
 
     def call(self, func, *args, **kwargs):
         """
