@@ -48,6 +48,10 @@ def remote_call_function(is_async, mock_remote_call):
 
 @pytest.fixture
 def circuit_success(is_async, mock_remote_call):
+    """
+    Obs: because those functions are inside circuit_success, the CircuitBreaker
+    name (__qualname__) will be: 'circuit_success.<locals>.circuit_function'
+    """
     if is_async:
         @CircuitBreaker()
         async def circuit_function():
