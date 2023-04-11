@@ -30,6 +30,11 @@ This is the simplest example. Just decorate a function with the ``@circuit`` dec
     def external_call():
         ...
 
+Async functions are also supported::
+
+    @circuit
+    async def external_call():
+        ...
 
 This decorator sets up a circuit breaker with the default settings. The circuit breaker:
 
