@@ -16,7 +16,7 @@ def is_async(request):
 
 
 @pytest.fixture
-async def sync_or_async(is_async):
+def sync_or_async(is_async):
     async def _sync(value):
         return value
 
@@ -27,22 +27,23 @@ async def sync_or_async(is_async):
 
 
 @pytest.fixture
-async def sleep(is_async):
+def sleep(is_async):
     async def _sleep(secs):
         if is_async:
             await asyncio.sleep(secs)
         else:
             time.sleep(secs)
+
     return _sleep
 
 
 @pytest.fixture
-async def remote_call_return_value():
+def remote_call_return_value():
     return object()
 
 
 @pytest.fixture
-async def mock_remote_call(is_async, mocker, remote_call_return_value):
+def mock_remote_call(is_async, mocker, remote_call_return_value):
     mocker_cls = mocker.AsyncMock if is_async else mocker.Mock
     return mocker_cls(return_value=remote_call_return_value)
 
