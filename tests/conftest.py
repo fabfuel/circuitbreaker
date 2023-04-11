@@ -3,8 +3,9 @@ import pytest
 from circuitbreaker import CircuitBreaker, CircuitBreakerMonitor
 
 
-def overwrite_qualname(value):
+def overwrite_name(value):
     def inner(function):
+        function.__name__ = value
         function.__qualname__ = value
         return function
     return inner
@@ -57,12 +58,12 @@ def remote_call_function(is_async, mock_remote_call):
 def circuit_success(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker()
-        @overwrite_qualname("circuit_success")
+        @overwrite_name("circuit_success")
         async def circuit_function():
             return await mock_remote_call()
     else:
         @CircuitBreaker()
-        @overwrite_qualname("circuit_success")
+        @overwrite_name("circuit_success")
         def circuit_function():
             return mock_remote_call()
 
