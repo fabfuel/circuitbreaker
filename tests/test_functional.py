@@ -6,8 +6,8 @@ from circuitbreaker import CircuitBreaker, CircuitBreakerError, \
     CircuitBreakerMonitor, STATE_CLOSED, STATE_HALF_OPEN, STATE_OPEN
 
 
-async def test_circuit_pass_through(sync_or_async, circuit_success):
-    assert await sync_or_async(circuit_success()) is True
+async def test_circuit_pass_through(sync_or_async, circuit_success, remote_call_return_value):
+    assert await sync_or_async(circuit_success()) is remote_call_return_value
 
 
 @pytest.mark.usefixtures(
