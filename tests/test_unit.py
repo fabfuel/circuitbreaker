@@ -209,3 +209,32 @@ def test_advanced_usage_circuitbreaker_default_expected_exception():
     breaker = circuit(cls=NervousBreaker)
     assert breaker._failure_threshold == 1
     assert breaker.is_failure(Exception, Exception())
+
+
+async def test_async_circuitbreaker_function_fallback_to_sync(mocker):
+    fallback_return = object()
+    sync_fallback = mocker.Mock(return_value=fallback_return)
+    async_function = mocker.AsyncMock(side_effect=IOError)
+
+    CircuitBreaker.opened = lambda self: True
+
+    cb = CircuitBreaker(name='WithFallback', fallback_function=sync_fallback)
+    assert await cb.decorate(async_function)() == fallback_return
+
+    sync_fallback.assert_called()
+    async_function.assert_not_called()
+
+
+async def test_async_circuitbreaker_function_fallback_to_async(mocker):
+    fallback_return = object()
+    async_fallback = mocker.AsyncMock(return_value=fallback_return)
+    async_function = mocker.AsyncMock(side_effect=IOError)
+
+    CircuitBreaker.opened = lambda self: True
+
+    cb = CircuitBreaker(name='WithFallback', fallback_function=async_fallback)
+    assert await cb.decorate(async_function)() == fallback_return
+
+    async_fallback.assert_called()
+    async_fallback.assert_awaited_once()
+    async_function.assert_not_called()

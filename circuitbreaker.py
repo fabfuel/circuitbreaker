@@ -189,7 +189,7 @@ class CircuitBreaker(object):
 
     async def _opened_dispatch_async(self, *args, **kwargs):
         if iscoroutinefunction(self.fallback_function):
-            return await self.fallback_function(*args, **kwargs)  # TODO: test
+            return await self.fallback_function(*args, **kwargs)
         return self._opened_dispatch(*args, **kwargs)
 
     def call(self, func, *args, **kwargs):
