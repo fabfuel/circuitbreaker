@@ -167,20 +167,20 @@ class CircuitBreaker(object):
 
     def _decorate_async(self, function):
         @wraps(function)
-        async def async_wrapper(*args, **kwargs):
+        async def awrapper(*args, **kwargs):
             if self.opened:
                 return await self._opened_dispatch_async(*args, **kwargs)
             return await self.call_async(function, *args, **kwargs)
 
         @wraps(function)
-        async def async_gen_wrapper(*args, **kwargs):
+        async def gen_awrapper(*args, **kwargs):
             if self.opened:
                 yield await self._opened_dispatch_async(*args, **kwargs)
                 return
             async for el in self.call_async_generator(function, *args, **kwargs):
                 yield el
 
-        return async_gen_wrapper if isasyncgenfunction(function) else async_wrapper
+        return gen_awrapper if isasyncgenfunction(function) else awrapper
 
     def _opened_dispatch(self, *args, **kwargs):
         if self.fallback_function:
