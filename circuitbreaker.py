@@ -160,37 +160,37 @@ class CircuitBreaker(object):
         @wraps(function)
         def wrapper(*args, **kwargs):
             if self.opened:
-                if self.fallback_function:
-                    return self.fallback_function(*args, **kwargs)
-                raise CircuitBreakerError(self)
+                return self._opened_dispatch(*args, **kwargs)
             return call(function, *args, **kwargs)
 
         return wrapper
 
     def _decorate_async(self, function):
-
-        async def opened_dispatch(*args, **kwargs):
-            if iscoroutinefunction(self.fallback_function):
-                return await self.fallback_function(*args, **kwargs)  # TODO: test
-            elif self.fallback_function:
-                return self.fallback_function(*args, **kwargs)
-            raise CircuitBreakerError(self)
-
         @wraps(function)
         async def async_wrapper(*args, **kwargs):
             if self.opened:
-                return await opened_dispatch(*args, **kwargs)
+                return await self._opened_dispatch_async(*args, **kwargs)
             return await self.call_async(function, *args, **kwargs)
 
         @wraps(function)
         async def async_gen_wrapper(*args, **kwargs):
             if self.opened:
-                yield await opened_dispatch(*args, **kwargs)
+                yield await self._opened_dispatch_async(*args, **kwargs)
                 return
             async for el in self.call_async_generator(function, *args, **kwargs):
                 yield el
 
         return async_gen_wrapper if isasyncgenfunction(function) else async_wrapper
+
+    def _opened_dispatch(self, *args, **kwargs):
+        if self.fallback_function:
+            return self.fallback_function(*args, **kwargs)
+        raise CircuitBreakerError(self)
+
+    async def _opened_dispatch_async(self, *args, **kwargs):
+        if iscoroutinefunction(self.fallback_function):
+            return await self.fallback_function(*args, **kwargs)  # TODO: test
+        return self._opened_dispatch(*args, **kwargs)
 
     def call(self, func, *args, **kwargs):
         """
