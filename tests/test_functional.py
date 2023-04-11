@@ -1,8 +1,13 @@
 import asyncio
 import pytest
 
-from circuitbreaker import CircuitBreaker, CircuitBreakerError, \
-    CircuitBreakerMonitor, STATE_CLOSED, STATE_HALF_OPEN, STATE_OPEN
+from circuitbreaker import (
+    CircuitBreakerError,
+    CircuitBreakerMonitor,
+    STATE_CLOSED,
+    STATE_HALF_OPEN,
+    STATE_OPEN,
+)
 
 
 async def test_circuit_pass_through(sync_or_async, circuit_success, remote_call_return_value):
