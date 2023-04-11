@@ -42,6 +42,18 @@ async def mock_remote_call(is_async, mocker, remote_call_return_value):
 
 
 @pytest.fixture
+def remote_call_function(is_async, mock_remote_call):
+    if is_async:
+        async def function(*args, **kwargs):
+            return await mock_remote_call()
+    else:
+        def function(*args, **kwargs):
+            return mock_remote_call()
+
+    return function
+
+
+@pytest.fixture
 def circuit_success(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker()

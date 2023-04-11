@@ -31,82 +31,86 @@ def test_circuitbreaker_error__str__():
     assert str(error).endswith('(0 failures, 30 sec remaining) (last_failure: Exception())')
 
 
-def test_circuitbreaker_should_save_last_exception_on_failure_call():
+async def test_circuitbreaker_should_save_last_exception_on_failure_call(
+    is_async, mock_remote_call, remote_call_function
+):
     cb = CircuitBreaker(name='Foobar')
 
-    func = Mock(side_effect=IOError)
-
+    mock_remote_call.side_effect = IOError
     with raises(IOError):
-        cb.call(func)
+        if is_async:
+            await cb.call_async(remote_call_function)
+        else:
+            cb.call(remote_call_function)
 
     assert isinstance(cb.last_failure, IOError)
 
 
-def test_circuitbreaker_should_clear_last_exception_on_success_call():
+async def test_circuitbreaker_should_clear_last_exception_on_success_call(
+    is_async, mock_remote_call, remote_call_function
+):
     cb = CircuitBreaker(name='Foobar')
     cb._last_failure = IOError()
     assert isinstance(cb.last_failure, IOError)
 
-    cb.call(lambda: True)
+    if is_async:
+        await cb.call_async(remote_call_function)
+    else:
+        cb.call(remote_call_function)
 
     assert cb.last_failure is None
 
 
-def test_circuitbreaker_should_call_fallback_function_if_open():
+async def test_circuitbreaker_should_call_fallback_function_if_open(
+    sync_or_async, remote_call_function
+):
     fallback = Mock(return_value=True)
-
-    func = Mock(return_value=False, __name__="Mock")  # attribute __name__ required for 2.7 compat with functools.wraps
 
     CircuitBreaker.opened = lambda self: True
 
     cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    decorated_func = cb.decorate(func)
+    decorated_func = cb.decorate(remote_call_function)
 
-    decorated_func()
+    await sync_or_async(decorated_func())
     fallback.assert_called_once_with()
 
 
-def test_circuitbreaker_should_not_call_function_if_open():
+async def test_circuitbreaker_should_not_call_function_if_open(
+    sync_or_async, remote_call_function, mock_remote_call
+):
     fallback = Mock(return_value=True)
-
-    func = Mock(return_value=False, __name__="Mock")  # attribute __name__ required for 2.7 compat with functools.wraps
 
     CircuitBreaker.opened = lambda self: True
 
     cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    decorated_func = cb.decorate(func)
+    decorated_func = cb.decorate(remote_call_function)
 
-    assert decorated_func() == fallback.return_value
-    assert not func.called
-
-
-def mocked_function(*args, **kwargs):
-    pass
+    assert await sync_or_async(decorated_func()) == fallback.return_value
+    assert not mock_remote_call.called
 
 
-def test_circuitbreaker_call_fallback_function_with_parameters():
+async def test_circuitbreaker_call_fallback_function_with_parameters(
+    sync_or_async, remote_call_function
+):
     fallback = Mock(return_value=True)
 
     cb = circuit(name='with_fallback', fallback_function=fallback)
 
     # mock opened prop to see if fallback is called with correct parameters.
     cb.opened = lambda self: True
-    func_decorated = cb.decorate(mocked_function)
+    func_decorated = cb.decorate(remote_call_function)
 
-    func_decorated('test2', test='test')
+    await sync_or_async(func_decorated('test2', test='test'))
 
     # check args and kwargs are getting correctly to fallback function
 
     fallback.assert_called_once_with('test2', test='test')
 
 
-@patch('circuitbreaker.CircuitBreaker.decorate')
-def test_circuit_decorator_without_args(circuitbreaker_mock):
-    def function():
-        return True
-
-    circuit(function)
-    circuitbreaker_mock.assert_called_once_with(function)
+def test_circuit_decorator_without_args(mocker, remote_call_function):
+    decorate_patch = mocker.patch.object(CircuitBreaker, 'decorate')
+    circuit(remote_call_function)
+    decorate_patch.assert_called_once_with(remote_call_function)
 
 
 def test_circuit_decorator_with_args():
