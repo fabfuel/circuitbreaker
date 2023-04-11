@@ -3,21 +3,13 @@ import pytest
 from circuitbreaker import CircuitBreaker, CircuitBreakerMonitor
 
 
-def overwrite_name(value):
-    def inner(function):
-        function.__name__ = value
-        function.__qualname__ = value
-        return function
-    return inner
-
-
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def clean_circuit_breaker_monitor():
     CircuitBreakerMonitor.circuit_breakers = {}
 
 
 @pytest.fixture(params=[True, False], ids=["async", "sync"])
-def is_async(request, clean_circuit_breaker_monitor):
+def is_async(request):
     return request.param
 
 
@@ -58,12 +50,10 @@ def remote_call_function(is_async, mock_remote_call):
 def circuit_success(is_async, mock_remote_call):
     if is_async:
         @CircuitBreaker()
-        @overwrite_name("circuit_success")
         async def circuit_function():
             return await mock_remote_call()
     else:
         @CircuitBreaker()
-        @overwrite_name("circuit_success")
         def circuit_function():
             return mock_remote_call()
 
