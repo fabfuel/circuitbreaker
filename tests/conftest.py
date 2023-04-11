@@ -1,3 +1,5 @@
+import asyncio
+import time
 import pytest
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerMonitor
@@ -22,6 +24,16 @@ async def sync_or_async(is_async):
         return await coro
 
     return _async if is_async else _sync
+
+
+@pytest.fixture
+async def sleep(is_async):
+    async def _sleep(secs):
+        if is_async:
+            await asyncio.sleep(secs)
+        else:
+            time.sleep(secs)
+    return _sleep
 
 
 @pytest.fixture
