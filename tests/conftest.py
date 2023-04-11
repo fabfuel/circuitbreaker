@@ -43,21 +43,8 @@ async def remote_call_return_value():
 
 @pytest.fixture
 async def mock_remote_call(is_async, mocker, remote_call_return_value):
-    mock_function = mocker.async_stub() if is_async else mocker.stub()
-    mock_function.return_value = remote_call_return_value
-    return mock_function
-
-
-@pytest.fixture
-def remote_call_function(is_async, mock_remote_call):
-    if is_async:
-        async def function(*args, **kwargs):
-            return await mock_remote_call()
-    else:
-        def function(*args, **kwargs):
-            return mock_remote_call()
-
-    return function
+    mocker_cls = mocker.AsyncMock if is_async else mocker.Mock
+    return mocker_cls(return_value=remote_call_return_value)
 
 
 @pytest.fixture
