@@ -1,27 +1,12 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-
 from asyncio import iscoroutinefunction
-from functools import wraps
 from datetime import datetime, timedelta
+from functools import wraps
 from inspect import isgeneratorfunction, isasyncgenfunction, isclass
-from typing import AnyStr, Iterable
 from math import ceil, floor
+from time import monotonic
+from typing import AnyStr, Iterable
 
-try:
-    from time import monotonic
-except ImportError:
-    from monotonic import monotonic
-
-# Python2 vs Python3 strings
-try:
-    STRING_TYPES = (basestring,)
-except NameError:
-    STRING_TYPES = (bytes, str)
-
+STRING_TYPES = (bytes, str)
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
@@ -197,7 +182,7 @@ class CircuitBreaker(object):
         """
         Note: unlike the sync version, it's not possible to return
         "value or generator" because async generators can't just be awaited
-        (they must be consumed with 'async for'). 
+        (they must be consumed with 'async for').
         """
         if isasyncgenfunction(self.fallback_function):
             async for el in self.fallback_function(*args, **kwargs):
@@ -340,30 +325,25 @@ class CircuitBreakerMonitor(object):
         cls.circuit_breakers[circuit_breaker.name] = circuit_breaker
 
     @classmethod
-    def all_closed(cls):
-        # type: () -> bool
+    def all_closed(cls) -> bool:
         return len(list(cls.get_open())) == 0
 
     @classmethod
-    def get_circuits(cls):
-        # type: () -> Iterable[CircuitBreaker]
+    def get_circuits(cls) -> Iterable[CircuitBreaker]:
         return cls.circuit_breakers.values()
 
     @classmethod
-    def get(cls, name):
-        # type: (AnyStr) -> CircuitBreaker
+    def get(cls, name: AnyStr) -> CircuitBreaker:
         return cls.circuit_breakers.get(name)
 
     @classmethod
-    def get_open(cls):
-        # type: () -> Iterable[CircuitBreaker]
+    def get_open(cls) -> Iterable[CircuitBreaker]:
         for circuit in cls.get_circuits():
             if circuit.opened:
                 yield circuit
 
     @classmethod
-    def get_closed(cls):
-        # type: () -> Iterable[CircuitBreaker]
+    def get_closed(cls) -> Iterable[CircuitBreaker]:
         for circuit in cls.get_circuits():
             if circuit.closed:
                 yield circuit
