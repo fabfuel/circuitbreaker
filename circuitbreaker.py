@@ -4,10 +4,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from asyncio import iscoroutinefunction
 from functools import wraps
 from datetime import datetime, timedelta
-from inspect import isgeneratorfunction, isclass
-from inspect import iscoroutinefunction, isasyncgenfunction
+from inspect import isgeneratorfunction, isasyncgenfunction, isclass
 from typing import AnyStr, Iterable
 from math import ceil, floor
 
