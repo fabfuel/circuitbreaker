@@ -3,6 +3,20 @@ import pytest
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
 
 
+@pytest.fixture
+def resolve_circuitbreaker_call_method(function_type):
+    def cb_call(circuit_breaker):
+        mapping = {
+            "sync-function": circuit_breaker.call,
+            "sync-generator": circuit_breaker.call_generator,
+            "async-function": circuit_breaker.call_async,
+            "async-generator": circuit_breaker.call_async_generator,
+        }
+        return mapping[function_type]
+
+    return cb_call
+
+
 class FooError(Exception):
     def __init__(self, val=None):
         self.val = val

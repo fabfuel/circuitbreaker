@@ -1,12 +1,52 @@
 import pytest
 
 from circuitbreaker import (
+    CircuitBreaker,
     CircuitBreakerError,
     CircuitBreakerMonitor,
     STATE_CLOSED,
     STATE_HALF_OPEN,
     STATE_OPEN,
 )
+
+
+@pytest.fixture
+def circuit_success(function):
+    return CircuitBreaker()(function)
+
+
+@pytest.fixture
+def circuit_failure(function, function_call_error):
+    return CircuitBreaker(
+        failure_threshold=1,
+        name="circuit_failure",
+    )(function)
+
+
+@pytest.fixture
+def circuit_threshold_1(function):
+    return CircuitBreaker(
+        failure_threshold=1,
+        name="threshold_1",
+    )(function)
+
+
+@pytest.fixture
+def circuit_threshold_2_timeout_1(function):
+    return CircuitBreaker(
+        failure_threshold=2,
+        recovery_timeout=1,
+        name="threshold_2",
+    )(function)
+
+
+@pytest.fixture
+def circuit_threshold_3_timeout_1(function):
+    return CircuitBreaker(
+        failure_threshold=3,
+        recovery_timeout=1,
+        name="threshold_3",
+    )(function)
 
 
 async def test_circuit_pass_through(

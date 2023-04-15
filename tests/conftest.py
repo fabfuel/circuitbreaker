@@ -1,12 +1,13 @@
 import asyncio
 import time
-import pytest
 from enum import Enum
 
-from circuitbreaker import CircuitBreaker, CircuitBreakerMonitor
+import pytest
+
+from circuitbreaker import CircuitBreakerMonitor
 
 
-class FunctionType(Enum):
+class FunctionType(str, Enum):
     sync_function = "sync-function"
     sync_generator = "sync-generator"
     async_function = "async-function"
@@ -25,12 +26,12 @@ def function_type(request):
 
 @pytest.fixture
 def is_async(function_type):
-    return function_type.value.startswith("async-")
+    return function_type.startswith("async-")
 
 
 @pytest.fixture
 def is_generator(function_type):
-    return function_type.value.endswith("-generator")
+    return function_type.endswith("-generator")
 
 
 @pytest.fixture
@@ -150,56 +151,3 @@ def function(function_factory, mock_function_call):
 @pytest.fixture
 def fallback_function(function_factory, mock_fallback_call):
     return function_factory(mock_fallback_call)
-
-
-@pytest.fixture
-def circuit_success(function):
-    return CircuitBreaker()(function)
-
-
-@pytest.fixture
-def circuit_failure(function, function_call_error):
-    return CircuitBreaker(
-        failure_threshold=1,
-        name="circuit_failure",
-    )(function)
-
-
-@pytest.fixture
-def circuit_threshold_1(function):
-    return CircuitBreaker(
-        failure_threshold=1,
-        name="threshold_1",
-    )(function)
-
-
-@pytest.fixture
-def circuit_threshold_2_timeout_1(function):
-    return CircuitBreaker(
-        failure_threshold=2,
-        recovery_timeout=1,
-        name="threshold_2",
-    )(function)
-
-
-@pytest.fixture
-def circuit_threshold_3_timeout_1(function):
-    return CircuitBreaker(
-        failure_threshold=3,
-        recovery_timeout=1,
-        name="threshold_3",
-    )(function)
-
-
-@pytest.fixture
-def resolve_circuitbreaker_call_method(function_type):
-    def cb_call(circuit_breaker):
-        mapping = {
-            FunctionType.sync_function: circuit_breaker.call,
-            FunctionType.sync_generator: circuit_breaker.call_generator,
-            FunctionType.async_function: circuit_breaker.call_async,
-            FunctionType.async_generator: circuit_breaker.call_async_generator,
-        }
-        return mapping[function_type]
-
-    return cb_call
