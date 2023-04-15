@@ -115,7 +115,7 @@ def function(is_async, is_generator, mock_remote_call):
 
 
 @pytest.fixture
-def circuit_success(function):
+def circuit_sample(function):
     return CircuitBreaker()(function)
 
 
