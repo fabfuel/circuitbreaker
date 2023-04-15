@@ -4,8 +4,8 @@ from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
 
 
 @pytest.fixture
-def resolve_circuitbreaker_call(is_async, is_generator, resolve_call, function):
-    async def call(circuitbreaker):
+def resolve_circuitbreaker_call_method(is_async, is_generator):
+    def cb_call(circuitbreaker):
         async_, sync_, generator_, function_ = (True, False) * 2
         dispatch = {
             (sync_, function_): circuitbreaker.call,
@@ -13,8 +13,8 @@ def resolve_circuitbreaker_call(is_async, is_generator, resolve_call, function):
             (async_, function_): circuitbreaker.call_async,
             (async_, generator_): circuitbreaker.call_async_generator,
         }
-        return await resolve_call(dispatch[is_async, is_generator](function))
-    return call
+        return dispatch[is_async, is_generator]
+    return cb_call
 
 
 class FooError(Exception):
@@ -41,24 +41,26 @@ def test_circuitbreaker_error__str__():
 
 
 async def test_circuitbreaker_should_save_last_exception_on_failure_call(
-    resolve_circuitbreaker_call, function_call_error
+    resolve_call, resolve_circuitbreaker_call_method, function, function_call_error
 ):
     cb = CircuitBreaker(name='Foobar')
 
+    cb_call = resolve_circuitbreaker_call_method(cb)
     with pytest.raises(function_call_error):
-        await resolve_circuitbreaker_call(cb)
+        await resolve_call(cb_call(function))
 
     assert isinstance(cb.last_failure, function_call_error)
 
 
 async def test_circuitbreaker_should_clear_last_exception_on_success_call(
-    resolve_circuitbreaker_call
+    resolve_call, resolve_circuitbreaker_call_method, function
 ):
     cb = CircuitBreaker(name='Foobar')
     cb._last_failure = IOError()
     assert isinstance(cb.last_failure, IOError)
 
-    await resolve_circuitbreaker_call(cb)
+    cb_call = resolve_circuitbreaker_call_method(cb)
+    await resolve_call(cb_call(function))
 
     assert cb.last_failure is None
 
