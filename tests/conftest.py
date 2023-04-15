@@ -99,18 +99,17 @@ def function(is_async, is_generator, mock_remote_call):
     if is_async:
         if is_generator:
             async def _function(*a, **kwa):
-                yield mock_remote_call()
+                yield mock_remote_call(*a, **kwa)
         else:
             async def _function(*a, **kwa):
-                return mock_remote_call()
+                return mock_remote_call(*a, **kwa)
     else:
         if is_generator:
             def _function(*a, **kwa):
-                yield mock_remote_call()
+                yield mock_remote_call(*a, **kwa)
         else:
             def _function(*a, **kwa):
-                return mock_remote_call()
-
+                return mock_remote_call(*a, **kwa)
     return _function
 
 
