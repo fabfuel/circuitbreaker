@@ -137,58 +137,46 @@ class CircuitBreaker(object):
         return self._decorate_sync(function)
 
     def _decorate_sync(self, function):
-        if isgeneratorfunction(function):
-            call = self.call_generator
-        else:
-            call = self.call
-
         @wraps(function)
         def wrapper(*args, **kwargs):
             if self.opened:
-                return self._opened_dispatch(*args, **kwargs)
-            return call(function, *args, **kwargs)
+                if self.fallback_function:
+                    return self.fallback_function(*args, **kwargs)
+                raise CircuitBreakerError(self)
+            return self.call(function, *args, **kwargs)
 
-        return wrapper
+        @wraps(function)
+        def gen_wrapper(*args, **kwargs):
+            if self.opened:
+                if self.fallback_function:
+                    yield from self.fallback_function(*args, **kwargs)
+                    return
+                raise CircuitBreakerError(self)
+            yield from self.call_generator(function, *args, **kwargs)
+
+        return gen_wrapper if isgeneratorfunction(function) else wrapper
 
     def _decorate_async(self, function):
         @wraps(function)
         async def awrapper(*args, **kwargs):
             if self.opened:
-                return await self._opened_dispatch_async(*args, **kwargs)
+                if self.fallback_function:
+                    return await self.fallback_function(*args, **kwargs)
+                raise CircuitBreakerError(self)
             return await self.call_async(function, *args, **kwargs)
 
         @wraps(function)
         async def gen_awrapper(*args, **kwargs):
             if self.opened:
-                async for el in self._opened_dispatch_async_generator(*args, **kwargs):
-                    yield el
-                return
+                if self.fallback_function:
+                    async for el in self.fallback_function(*args, **kwargs):
+                        yield el
+                    return
+                raise CircuitBreakerError(self)
             async for el in self.call_async_generator(function, *args, **kwargs):
                 yield el
 
         return gen_awrapper if isasyncgenfunction(function) else awrapper
-
-    def _opened_dispatch(self, *args, **kwargs):
-        if self.fallback_function:
-            return self.fallback_function(*args, **kwargs)
-        raise CircuitBreakerError(self)
-
-    async def _opened_dispatch_async(self, *args, **kwargs):
-        if iscoroutinefunction(self.fallback_function):
-            return await self.fallback_function(*args, **kwargs)
-        return self._opened_dispatch(*args, **kwargs)
-
-    async def _opened_dispatch_async_generator(self, *args, **kwargs):
-        """
-        Note: unlike the sync version, it's not possible to return
-        "value or generator" because async generators can't just be awaited
-        (they must be consumed with 'async for').
-        """
-        if isasyncgenfunction(self.fallback_function):
-            async for el in self.fallback_function(*args, **kwargs):
-                yield el
-            return
-        yield await self._opened_dispatch_async(*args, **kwargs)
 
     def call(self, func, *args, **kwargs):
         """
