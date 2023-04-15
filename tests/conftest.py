@@ -5,6 +5,24 @@ import pytest
 from circuitbreaker import CircuitBreaker, CircuitBreakerMonitor
 
 
+def _function_factory(is_async, is_generator, inner_call):
+    if is_async:
+        if is_generator:
+            async def _function(*a, **kwa):
+                yield inner_call(*a, **kwa)
+        else:
+            async def _function(*a, **kwa):
+                return inner_call(*a, **kwa)
+    else:
+        if is_generator:
+            def _function(*a, **kwa):
+                yield inner_call(*a, **kwa)
+        else:
+            def _function(*a, **kwa):
+                return inner_call(*a, **kwa)
+    return _function
+
+
 @pytest.fixture(autouse=True)
 def clean_circuit_breaker_monitor():
     CircuitBreakerMonitor.circuit_breakers = {}
@@ -82,8 +100,19 @@ def mock_remote_call(mocker):
 
 
 @pytest.fixture
+def mock_fallback_call(mocker):
+    return mocker.Mock(return_value=object())
+
+
+@pytest.fixture
 def remote_call_return_value(is_generator, mock_remote_call):
     value = mock_remote_call.return_value
+    return [value] if is_generator else value
+
+
+@pytest.fixture
+def fallback_call_return_value(is_generator, mock_fallback_call):
+    value = mock_fallback_call.return_value
     return [value] if is_generator else value
 
 
@@ -96,21 +125,12 @@ def remote_call_error(mock_remote_call):
 
 @pytest.fixture
 def function(is_async, is_generator, mock_remote_call):
-    if is_async:
-        if is_generator:
-            async def _function(*a, **kwa):
-                yield mock_remote_call(*a, **kwa)
-        else:
-            async def _function(*a, **kwa):
-                return mock_remote_call(*a, **kwa)
-    else:
-        if is_generator:
-            def _function(*a, **kwa):
-                yield mock_remote_call(*a, **kwa)
-        else:
-            def _function(*a, **kwa):
-                return mock_remote_call(*a, **kwa)
-    return _function
+    return _function_factory(is_async, is_generator, mock_remote_call)
+
+
+@pytest.fixture
+def fallback_function(is_async, is_generator, mock_fallback_call):
+    return _function_factory(is_async, is_generator, mock_fallback_call)
 
 
 @pytest.fixture

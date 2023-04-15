@@ -3,6 +3,20 @@ import pytest
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
 
 
+@pytest.fixture
+def resolve_circuitbreaker_call(is_async, is_generator, resolve_call, function):
+    async def call(circuitbreaker):
+        async_, sync_, generator_, function_ = (True, False) * 2
+        dispatch = {
+            (sync_, function_): circuitbreaker.call,
+            (sync_, generator_): circuitbreaker.call_generator,
+            (async_, function_): circuitbreaker.call_async,
+            (async_, generator_): circuitbreaker.call_async_generator,
+        }
+        return await resolve_call(dispatch[is_async, is_generator](function))
+    return call
+
+
 class FooError(Exception):
     def __init__(self, val=None):
         self.val = val
@@ -27,85 +41,71 @@ def test_circuitbreaker_error__str__():
 
 
 async def test_circuitbreaker_should_save_last_exception_on_failure_call(
-    is_async, mock_remote_call
+    resolve_circuitbreaker_call, remote_call_error
 ):
     cb = CircuitBreaker(name='Foobar')
 
-    mock_remote_call.side_effect = IOError
-    with pytest.raises(IOError):
-        if is_async:
-            await cb.call_async(mock_remote_call)
-        else:
-            cb.call(mock_remote_call)
+    with pytest.raises(remote_call_error):
+        await resolve_circuitbreaker_call(cb)
 
-    assert isinstance(cb.last_failure, IOError)
+    assert isinstance(cb.last_failure, remote_call_error)
 
 
 async def test_circuitbreaker_should_clear_last_exception_on_success_call(
-    is_async, mock_remote_call
+    resolve_circuitbreaker_call
 ):
     cb = CircuitBreaker(name='Foobar')
     cb._last_failure = IOError()
     assert isinstance(cb.last_failure, IOError)
 
-    if is_async:
-        await cb.call_async(mock_remote_call)
-    else:
-        cb.call(mock_remote_call)
+    await resolve_circuitbreaker_call(cb)
 
     assert cb.last_failure is None
 
 
 async def test_circuitbreaker_should_call_fallback_function_if_open(
-    mocker, sync_or_async, mock_remote_call
+    resolve_call, function, fallback_function, mock_fallback_call, fallback_call_return_value
 ):
-    fallback = mocker.Mock(return_value=True)
-
     CircuitBreaker.opened = lambda self: True
 
-    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    decorated_func = cb.decorate(mock_remote_call)
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback_function)
+    decorated_func = cb.decorate(function)
 
-    await sync_or_async(decorated_func())
-    fallback.assert_called_once_with()
+    assert await resolve_call(decorated_func()) == fallback_call_return_value
+    mock_fallback_call.assert_called_once_with()
 
 
 async def test_circuitbreaker_should_not_call_function_if_open(
-    mocker, sync_or_async, mock_remote_call
+    resolve_call, function, mock_remote_call, fallback_function, fallback_call_return_value
 ):
-    fallback = mocker.Mock(return_value=True)
-
     CircuitBreaker.opened = lambda self: True
 
-    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    decorated_func = cb.decorate(mock_remote_call)
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback_function)
+    decorated_func = cb.decorate(function)
 
-    assert await sync_or_async(decorated_func()) == fallback.return_value
+    assert await resolve_call(decorated_func()) == fallback_call_return_value
     assert not mock_remote_call.called
 
 
 async def test_circuitbreaker_call_fallback_function_with_parameters(
-    mocker, sync_or_async, mock_remote_call
+    resolve_call, function, fallback_function, mock_fallback_call, fallback_call_return_value
 ):
-    fallback = mocker.Mock(return_value=True)
-
-    cb = circuit(name='with_fallback', fallback_function=fallback)
-
     # mock opened prop to see if fallback is called with correct parameters.
-    cb.opened = lambda self: True
-    func_decorated = cb.decorate(mock_remote_call)
+    CircuitBreaker.opened = lambda self: True
 
-    await sync_or_async(func_decorated('test2', test='test'))
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback_function)
+    decorated_func = cb.decorate(function)
+
+    assert await resolve_call(decorated_func('test2', test='test')) == fallback_call_return_value
 
     # check args and kwargs are getting correctly to fallback function
+    mock_fallback_call.assert_called_once_with('test2', test='test')
 
-    fallback.assert_called_once_with('test2', test='test')
 
-
-def test_circuit_decorator_without_args(mocker, mock_remote_call):
+def test_circuit_decorator_without_args(mocker, function):
     decorate_patch = mocker.patch.object(CircuitBreaker, 'decorate')
-    circuit(mock_remote_call)
-    decorate_patch.assert_called_once_with(mock_remote_call)
+    circuit(function)
+    decorate_patch.assert_called_once_with(function)
 
 
 def test_circuit_decorator_with_args():
@@ -209,32 +209,3 @@ def test_advanced_usage_circuitbreaker_default_expected_exception():
     breaker = circuit(cls=NervousBreaker)
     assert breaker._failure_threshold == 1
     assert breaker.is_failure(Exception, Exception())
-
-
-async def test_async_circuitbreaker_function_fallback_to_sync(mocker):
-    fallback_return = object()
-    sync_fallback = mocker.Mock(return_value=fallback_return)
-    async_function = mocker.AsyncMock(side_effect=IOError)
-
-    CircuitBreaker.opened = lambda self: True
-
-    cb = CircuitBreaker(name='WithFallback', fallback_function=sync_fallback)
-    assert await cb.decorate(async_function)() == fallback_return
-
-    sync_fallback.assert_called()
-    async_function.assert_not_called()
-
-
-async def test_async_circuitbreaker_function_fallback_to_async(mocker):
-    fallback_return = object()
-    async_fallback = mocker.AsyncMock(return_value=fallback_return)
-    async_function = mocker.AsyncMock(side_effect=IOError)
-
-    CircuitBreaker.opened = lambda self: True
-
-    cb = CircuitBreaker(name='WithFallback', fallback_function=async_fallback)
-    assert await cb.decorate(async_function)() == fallback_return
-
-    async_fallback.assert_called()
-    async_fallback.assert_awaited_once()
-    async_function.assert_not_called()
