@@ -201,7 +201,7 @@ class CircuitBreaker(object):
         """
         Calls the decorated async function and applies the circuit breaker
         rules on success or failure
-        :param func: Decorated function
+        :param func: Decorated async function
         """
         with self:
             return await func(*args, **kwargs)
@@ -210,7 +210,7 @@ class CircuitBreaker(object):
         """
         Calls the decorated async generator function and applies the circuit breaker
         rules on success or failure
-        :param func: Decorated generator function
+        :param func: Decorated async generator function
         """
         with self:
             async for el in func(*args, **kwargs):
