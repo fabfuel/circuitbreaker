@@ -1,26 +1,16 @@
 import asyncio
 import time
 import pytest
+from enum import Enum
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerMonitor
 
 
-def _function_factory(is_async, is_generator, inner_call):
-    if is_async:
-        if is_generator:
-            async def _function(*a, **kwa):
-                yield inner_call(*a, **kwa)
-        else:
-            async def _function(*a, **kwa):
-                return inner_call(*a, **kwa)
-    else:
-        if is_generator:
-            def _function(*a, **kwa):
-                yield inner_call(*a, **kwa)
-        else:
-            def _function(*a, **kwa):
-                return inner_call(*a, **kwa)
-    return _function
+class FunctionType(Enum):
+    sync_function = "sync-function"
+    sync_generator = "sync-generator"
+    async_function = "async-function"
+    async_generator = "async-generator"
 
 
 @pytest.fixture(autouse=True)
@@ -28,18 +18,49 @@ def clean_circuit_breaker_monitor():
     CircuitBreakerMonitor.circuit_breakers = {}
 
 
-@pytest.fixture(params=[True, False], ids=["async", "sync"])
-def is_async(request):
-    return request.param
-
-
-@pytest.fixture(params=[True, False], ids=["generator", "function"])
-def is_generator(request):
+@pytest.fixture(params=FunctionType, ids=[e.value for e in FunctionType])
+def function_type(request):
     return request.param
 
 
 @pytest.fixture
-def resolve_call(is_async, is_generator):
+def is_async(function_type):
+    return function_type.value.startswith("async-")
+
+
+@pytest.fixture
+def is_generator(function_type):
+    return function_type.value.endswith("-generator")
+
+
+@pytest.fixture
+def function_factory(function_type):
+    def factory(inner_call):
+        def _sync(*a, **kwa):
+            return inner_call(*a, **kwa)
+
+        def _sync_gen(*a, **kwa):
+            yield inner_call(*a, **kwa)
+
+        async def _async(*a, **kwa):
+            return inner_call(*a, **kwa)
+
+        async def _async_gen(*a, **kwa):
+            yield inner_call(*a, **kwa)
+
+        mapping = {
+            FunctionType.sync_function: _sync,
+            FunctionType.sync_generator: _sync_gen,
+            FunctionType.async_function: _async,
+            FunctionType.async_generator: _async_gen,
+        }
+        return mapping[function_type]
+
+    return factory
+
+
+@pytest.fixture
+def resolve_call(function_type):
     """
     This fixture helps abstract calls from other fixtures that have sync and
     async, function and generator versions.
@@ -72,15 +93,13 @@ def resolve_call(is_async, is_generator):
     async def _async_gen(async_generator):
         return [el async for el in async_generator]
 
-    async_, sync_, generator_, function_ = (True, False) * 2
-
-    dispatch = {
-        (sync_, function_): _sync,
-        (sync_, generator_): _sync_gen,
-        (async_, function_): _async,
-        (async_, generator_): _async_gen,
+    mapping = {
+        FunctionType.sync_function: _sync,
+        FunctionType.sync_generator: _sync_gen,
+        FunctionType.async_function: _async,
+        FunctionType.async_generator: _async_gen,
     }
-    return dispatch[is_async, is_generator]
+    return mapping[function_type]
 
 
 @pytest.fixture
@@ -124,13 +143,13 @@ def function_call_error(mock_function_call):
 
 
 @pytest.fixture
-def function(is_async, is_generator, mock_function_call):
-    return _function_factory(is_async, is_generator, mock_function_call)
+def function(function_factory, mock_function_call):
+    return function_factory(mock_function_call)
 
 
 @pytest.fixture
-def fallback_function(is_async, is_generator, mock_fallback_call):
-    return _function_factory(is_async, is_generator, mock_fallback_call)
+def fallback_function(function_factory, mock_fallback_call):
+    return function_factory(mock_fallback_call)
 
 
 @pytest.fixture
@@ -170,3 +189,17 @@ def circuit_threshold_3_timeout_1(function):
         recovery_timeout=1,
         name="threshold_3",
     )(function)
+
+
+@pytest.fixture
+def resolve_circuitbreaker_call_method(function_type):
+    def cb_call(circuit_breaker):
+        mapping = {
+            FunctionType.sync_function: circuit_breaker.call,
+            FunctionType.sync_generator: circuit_breaker.call_generator,
+            FunctionType.async_function: circuit_breaker.call_async,
+            FunctionType.async_generator: circuit_breaker.call_async_generator,
+        }
+        return mapping[function_type]
+
+    return cb_call
