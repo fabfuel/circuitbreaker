@@ -15,29 +15,54 @@ def is_async(request):
     return request.param
 
 
+@pytest.fixture(params=[True, False], ids=["generator", "function"])
+def is_generator(request):
+    return request.param
+
+
 @pytest.fixture
-def sync_or_async(is_async):
+def resolve_call(is_async, is_generator):
     """
     This fixture helps abstract calls from other fixtures that have sync and
-    async versions - those that uses 'is_async' fixture.
+    async, function and generator versions.
 
     For example, this:
         if is_async:
-            await circuit_success()
+            if is_generator:
+                result = [el async for el in function()]
+            else:
+                result = await function()
         else:
-            circuit_success()
+            if is_generator:
+                result = list(function())
+            else:
+                result = function()
 
     Can be replaced with:
-        await sync_or_async(circuit_success())
+        result = await resolve_call(function())
 
     """
     async def _sync(value):
         return value
 
-    async def _async(coro):
-        return await coro
+    async def _sync_gen(generator):
+        return list(generator)
 
-    return _async if is_async else _sync
+    async def _async(coroutine):
+        return await coroutine
+
+    async def _async_gen(async_generator):
+        return [el async for el in async_generator]
+
+    async_, sync_, generator_, function_ = (True, False) * 2
+
+    dispatch = {
+        (sync_, function_): _sync,
+        (sync_, generator_): _sync_gen,
+        (async_, function_): _async,
+        (async_, generator_): _async_gen,
+    }
+    return dispatch[is_async, is_generator]
 
 
 @pytest.fixture
@@ -52,103 +77,77 @@ def sleep(is_async):
 
 
 @pytest.fixture
-def remote_call_return_value():
-    return object()
+def mock_remote_call(mocker):
+    return mocker.Mock(return_value=object())
 
 
 @pytest.fixture
-def mock_remote_call(is_async, mocker, remote_call_return_value):
-    mocker_cls = mocker.AsyncMock if is_async else mocker.Mock
-    return mocker_cls(return_value=remote_call_return_value)
+def remote_call_return_value(is_generator, mock_remote_call):
+    value = mock_remote_call.return_value
+    return [value] if is_generator else value
 
 
 @pytest.fixture
-def circuit_success(is_async, mock_remote_call):
-    """
-    Obs: because those functions are inside circuit_success, the CircuitBreaker
-    name (__qualname__) will be: 'circuit_success.<locals>.circuit_function'
-    """
+def remote_call_error(mock_remote_call):
+    error = IOError
+    mock_remote_call.side_effect = error
+    return error
+
+
+@pytest.fixture
+def function(is_async, is_generator, mock_remote_call):
     if is_async:
-        @CircuitBreaker()
-        async def circuit_function():
-            return await mock_remote_call()
+        if is_generator:
+            async def _function(*a, **kwa):
+                yield mock_remote_call()
+        else:
+            async def _function(*a, **kwa):
+                return mock_remote_call()
     else:
-        @CircuitBreaker()
-        def circuit_function():
-            return mock_remote_call()
+        if is_generator:
+            def _function(*a, **kwa):
+                yield mock_remote_call()
+        else:
+            def _function(*a, **kwa):
+                return mock_remote_call()
 
-    return circuit_function
+    return _function
 
 
 @pytest.fixture
-def circuit_failure(is_async):
-    if is_async:
-        @CircuitBreaker(failure_threshold=1, name="circuit_failure")
-        async def circuit_function():
-            raise IOError()
-    else:
-        @CircuitBreaker(failure_threshold=1, name="circuit_failure")
-        def circuit_function():
-            raise IOError()
-
-    return circuit_function
+def circuit_success(function):
+    return CircuitBreaker()(function)
 
 
 @pytest.fixture
-def circuit_generator_failure(is_async, mock_remote_call):
-    if is_async:
-        @CircuitBreaker(failure_threshold=1, name="circuit_generator_failure")
-        async def circuit_function():
-            await mock_remote_call()
-            yield 1
-            raise IOError()
-    else:
-        @CircuitBreaker(failure_threshold=1, name="circuit_generator_failure")
-        def circuit_function():
-            mock_remote_call()
-            yield 1
-            raise IOError()
-
-    return circuit_function
+def circuit_failure(function, remote_call_error):
+    return CircuitBreaker(
+        failure_threshold=1,
+        name="circuit_failure",
+    )(function)
 
 
 @pytest.fixture
-def circuit_threshold_1(is_async, mock_remote_call):
-    if is_async:
-        @CircuitBreaker(failure_threshold=1, name="threshold_1")
-        async def circuit_function():
-            return await mock_remote_call()
-    else:
-        @CircuitBreaker(failure_threshold=1, name="threshold_1")
-        def circuit_function():
-            return mock_remote_call()
-
-    return circuit_function
+def circuit_threshold_1(function):
+    return CircuitBreaker(
+        failure_threshold=1,
+        name="threshold_1",
+    )(function)
 
 
 @pytest.fixture
-def circuit_threshold_2_timeout_1(is_async, mock_remote_call):
-    if is_async:
-        @CircuitBreaker(failure_threshold=2, recovery_timeout=1, name="threshold_2")
-        async def circuit_function():
-            return await mock_remote_call()
-    else:
-        @CircuitBreaker(failure_threshold=2, recovery_timeout=1, name="threshold_2")
-        def circuit_function():
-            return mock_remote_call()
-
-    return circuit_function
+def circuit_threshold_2_timeout_1(function):
+    return CircuitBreaker(
+        failure_threshold=2,
+        recovery_timeout=1,
+        name="threshold_2",
+    )(function)
 
 
 @pytest.fixture
-def circuit_threshold_3_timeout_1(is_async, mock_remote_call):
-    if is_async:
-        @CircuitBreaker(failure_threshold=3, recovery_timeout=1, name="threshold_3")
-        async def circuit_function():
-            return await mock_remote_call()
-    else:
-        @CircuitBreaker(failure_threshold=3, recovery_timeout=1, name="threshold_3")
-        def circuit_function():
-            return mock_remote_call()
-
-    return circuit_function
+def circuit_threshold_3_timeout_1(function):
+    return CircuitBreaker(
+        failure_threshold=3,
+        recovery_timeout=1,
+        name="threshold_3",
+    )(function)
