@@ -41,14 +41,14 @@ def test_circuitbreaker_error__str__():
 
 
 async def test_circuitbreaker_should_save_last_exception_on_failure_call(
-    resolve_circuitbreaker_call, remote_call_error
+    resolve_circuitbreaker_call, function_call_error
 ):
     cb = CircuitBreaker(name='Foobar')
 
-    with pytest.raises(remote_call_error):
+    with pytest.raises(function_call_error):
         await resolve_circuitbreaker_call(cb)
 
-    assert isinstance(cb.last_failure, remote_call_error)
+    assert isinstance(cb.last_failure, function_call_error)
 
 
 async def test_circuitbreaker_should_clear_last_exception_on_success_call(
@@ -76,7 +76,7 @@ async def test_circuitbreaker_should_call_fallback_function_if_open(
 
 
 async def test_circuitbreaker_should_not_call_function_if_open(
-    resolve_call, function, mock_remote_call, fallback_function, fallback_call_return_value
+    resolve_call, function, mock_function_call, fallback_function, fallback_call_return_value
 ):
     CircuitBreaker.opened = lambda self: True
 
@@ -84,7 +84,7 @@ async def test_circuitbreaker_should_not_call_function_if_open(
     decorated_func = cb.decorate(function)
 
     assert await resolve_call(decorated_func()) == fallback_call_return_value
-    assert not mock_remote_call.called
+    assert not mock_function_call.called
 
 
 async def test_circuitbreaker_call_fallback_function_with_parameters(

@@ -95,7 +95,7 @@ def sleep(is_async):
 
 
 @pytest.fixture
-def mock_remote_call(mocker):
+def mock_function_call(mocker):
     return mocker.Mock(return_value=object())
 
 
@@ -105,8 +105,8 @@ def mock_fallback_call(mocker):
 
 
 @pytest.fixture
-def remote_call_return_value(is_generator, mock_remote_call):
-    value = mock_remote_call.return_value
+def function_call_return_value(is_generator, mock_function_call):
+    value = mock_function_call.return_value
     return [value] if is_generator else value
 
 
@@ -117,15 +117,15 @@ def fallback_call_return_value(is_generator, mock_fallback_call):
 
 
 @pytest.fixture
-def remote_call_error(mock_remote_call):
+def function_call_error(mock_function_call):
     error = IOError
-    mock_remote_call.side_effect = error
+    mock_function_call.side_effect = error
     return error
 
 
 @pytest.fixture
-def function(is_async, is_generator, mock_remote_call):
-    return _function_factory(is_async, is_generator, mock_remote_call)
+def function(is_async, is_generator, mock_function_call):
+    return _function_factory(is_async, is_generator, mock_function_call)
 
 
 @pytest.fixture
@@ -139,7 +139,7 @@ def circuit_sample(function):
 
 
 @pytest.fixture
-def circuit_failure(function, remote_call_error):
+def circuit_failure(function, function_call_error):
     return CircuitBreaker(
         failure_threshold=1,
         name="circuit_failure",
