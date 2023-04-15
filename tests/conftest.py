@@ -134,7 +134,7 @@ def fallback_function(is_async, is_generator, mock_fallback_call):
 
 
 @pytest.fixture
-def circuit_sample(function):
+def circuit_success(function):
     return CircuitBreaker()(function)
 
 

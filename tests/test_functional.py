@@ -10,13 +10,13 @@ from circuitbreaker import (
 
 
 async def test_circuit_pass_through(
-    resolve_call, circuit_sample, function_call_return_value
+    resolve_call, circuit_success, function_call_return_value
 ):
-    assert await resolve_call(circuit_sample()) == function_call_return_value
+    assert await resolve_call(circuit_success()) == function_call_return_value
 
 
 @pytest.mark.usefixtures(
-    "circuit_sample",
+    "circuit_success",
     "circuit_failure",
     "circuit_threshold_1",
     "circuit_threshold_2_timeout_1",
