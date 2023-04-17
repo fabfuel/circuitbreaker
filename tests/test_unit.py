@@ -1,3 +1,6 @@
+from asyncio import iscoroutinefunction
+from inspect import isgeneratorfunction, isasyncgenfunction
+
 import pytest
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
@@ -38,6 +41,24 @@ def test_circuitbreaker_error__str__():
 
     assert str(error).startswith('Circuit "Foobar" OPEN until ')
     assert str(error).endswith('(0 failures, 30 sec remaining) (last_failure: Exception())')
+
+
+async def test_circuitbreaker_wrapper_matches_function_type(function, is_async, is_generator):
+    cb = CircuitBreaker(name='Foobar')
+    wrapper = cb(function)
+
+    assert (
+        isgeneratorfunction(function) == isgeneratorfunction(wrapper)
+        == (not is_async and is_generator)
+    )
+    assert (
+        iscoroutinefunction(function) == iscoroutinefunction(wrapper)
+        == (is_async and not is_generator)
+    )
+    assert (
+        isasyncgenfunction(function) == isasyncgenfunction(wrapper)
+        == (is_async and is_generator)
+    )
 
 
 async def test_circuitbreaker_should_save_last_exception_on_failure_call(
