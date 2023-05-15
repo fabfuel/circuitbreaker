@@ -31,5 +31,6 @@ setup(
         'Operating System :: Unix',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-    ]
+    ],
+    options={'bdist_wheel':{'universal':True}}
 )
