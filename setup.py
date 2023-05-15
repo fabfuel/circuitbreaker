@@ -11,7 +11,7 @@ def readme():
 
 setup(
     name='circuitbreaker',
-    version='1.4.0',
+    version='2.0.0',
     url='https://github.com/fabfuel/circuitbreaker',
     download_url='https://github.com/fabfuel/circuitbreaker/archive/1.3.1.tar.gz',
     license='BSD-3-Clause',
@@ -32,5 +32,5 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
     ],
-    options={'bdist_wheel':{'universal':True}}
+    options={'bdist_wheel': {'universal': True}}
 )
