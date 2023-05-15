@@ -1,26 +1,12 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-
-from functools import wraps
+from asyncio import iscoroutinefunction
 from datetime import datetime, timedelta
-from inspect import isgeneratorfunction, isclass
-from typing import AnyStr, Iterable
+from functools import wraps
+from inspect import isgeneratorfunction, isasyncgenfunction, isclass
 from math import ceil, floor
+from time import monotonic
+from typing import AnyStr, Iterable
 
-try:
-    from time import monotonic
-except ImportError:
-    from monotonic import monotonic
-
-# Python2 vs Python3 strings
-try:
-    STRING_TYPES = (basestring,)
-except NameError:
-    STRING_TYPES = (bytes, str)
-
+STRING_TYPES = (bytes, str)
 STATE_CLOSED = 'closed'
 STATE_OPEN = 'open'
 STATE_HALF_OPEN = 'half_open'
@@ -145,20 +131,52 @@ class CircuitBreaker(object):
 
         CircuitBreakerMonitor.register(self)
 
-        if isgeneratorfunction(function):
-            call = self.call_generator
-        else:
-            call = self.call
+        if iscoroutinefunction(function) or isasyncgenfunction(function):
+            return self._decorate_async(function)
 
+        return self._decorate_sync(function)
+
+    def _decorate_sync(self, function):
         @wraps(function)
         def wrapper(*args, **kwargs):
             if self.opened:
                 if self.fallback_function:
                     return self.fallback_function(*args, **kwargs)
                 raise CircuitBreakerError(self)
-            return call(function, *args, **kwargs)
+            return self.call(function, *args, **kwargs)
 
-        return wrapper
+        @wraps(function)
+        def gen_wrapper(*args, **kwargs):
+            if self.opened:
+                if self.fallback_function:
+                    yield from self.fallback_function(*args, **kwargs)
+                    return
+                raise CircuitBreakerError(self)
+            yield from self.call_generator(function, *args, **kwargs)
+
+        return gen_wrapper if isgeneratorfunction(function) else wrapper
+
+    def _decorate_async(self, function):
+        @wraps(function)
+        async def awrapper(*args, **kwargs):
+            if self.opened:
+                if self.fallback_function:
+                    return await self.fallback_function(*args, **kwargs)
+                raise CircuitBreakerError(self)
+            return await self.call_async(function, *args, **kwargs)
+
+        @wraps(function)
+        async def gen_awrapper(*args, **kwargs):
+            if self.opened:
+                if self.fallback_function:
+                    async for el in self.fallback_function(*args, **kwargs):
+                        yield el
+                    return
+                raise CircuitBreakerError(self)
+            async for el in self.call_async_generator(function, *args, **kwargs):
+                yield el
+
+        return gen_awrapper if isasyncgenfunction(function) else awrapper
 
     def call(self, func, *args, **kwargs):
         """
@@ -177,6 +195,25 @@ class CircuitBreaker(object):
         """
         with self:
             for el in func(*args, **kwargs):
+                yield el
+
+    async def call_async(self, func, *args, **kwargs):
+        """
+        Calls the decorated async function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated async function
+        """
+        with self:
+            return await func(*args, **kwargs)
+
+    async def call_async_generator(self, func, *args, **kwargs):
+        """
+        Calls the decorated async generator function and applies the circuit breaker
+        rules on success or failure
+        :param func: Decorated async generator function
+        """
+        with self:
+            async for el in func(*args, **kwargs):
                 yield el
 
     def __call_succeeded(self):
@@ -276,30 +313,25 @@ class CircuitBreakerMonitor(object):
         cls.circuit_breakers[circuit_breaker.name] = circuit_breaker
 
     @classmethod
-    def all_closed(cls):
-        # type: () -> bool
+    def all_closed(cls) -> bool:
         return len(list(cls.get_open())) == 0
 
     @classmethod
-    def get_circuits(cls):
-        # type: () -> Iterable[CircuitBreaker]
+    def get_circuits(cls) -> Iterable[CircuitBreaker]:
         return cls.circuit_breakers.values()
 
     @classmethod
-    def get(cls, name):
-        # type: (AnyStr) -> CircuitBreaker
+    def get(cls, name: AnyStr) -> CircuitBreaker:
         return cls.circuit_breakers.get(name)
 
     @classmethod
-    def get_open(cls):
-        # type: () -> Iterable[CircuitBreaker]
+    def get_open(cls) -> Iterable[CircuitBreaker]:
         for circuit in cls.get_circuits():
             if circuit.opened:
                 yield circuit
 
     @classmethod
-    def get_closed(cls):
-        # type: () -> Iterable[CircuitBreaker]
+    def get_closed(cls) -> Iterable[CircuitBreaker]:
         for circuit in cls.get_circuits():
             if circuit.closed:
                 yield circuit

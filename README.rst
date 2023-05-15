@@ -30,6 +30,11 @@ This is the simplest example. Just decorate a function with the ``@circuit`` dec
     def external_call():
         ...
 
+Async functions are also supported::
+
+    @circuit
+    async def external_call():
+        ...
 
 This decorator sets up a circuit breaker with the default settings. The circuit breaker:
 
@@ -128,6 +133,9 @@ fallback function
 By default, the circuit breaker will raise a ``CircuitBreaker`` exception when the circuit is opened.
 You can instead specify a function to be called when the circuit is opened. This function can be specified with the
 ``fallback_function`` parameter and will be called with the same parameters as the decorated function would be.
+
+The fallback type of call must also match the decorated function. For instance, if the decorated function is an
+async generator, the ``fallback_function`` must be an async generator as well.
 
 Advanced Usage
 --------------

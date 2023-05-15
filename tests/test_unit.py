@@ -1,11 +1,23 @@
-try:
-    from unittest.mock import Mock, patch
-except ImportError:
-    from mock import Mock, patch
+from asyncio import iscoroutinefunction
+from inspect import isgeneratorfunction, isasyncgenfunction
 
-from pytest import raises
+import pytest
 
 from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
+
+
+@pytest.fixture
+def resolve_circuitbreaker_call_method(function_type):
+    def cb_call(circuit_breaker):
+        mapping = {
+            "sync-function": circuit_breaker.call,
+            "sync-generator": circuit_breaker.call_generator,
+            "async-function": circuit_breaker.call_async,
+            "async-generator": circuit_breaker.call_async_generator,
+        }
+        return mapping[function_type]
+
+    return cb_call
 
 
 class FooError(Exception):
@@ -31,82 +43,92 @@ def test_circuitbreaker_error__str__():
     assert str(error).endswith('(0 failures, 30 sec remaining) (last_failure: Exception())')
 
 
-def test_circuitbreaker_should_save_last_exception_on_failure_call():
+async def test_circuitbreaker_wrapper_matches_function_type(function, is_async, is_generator):
+    cb = CircuitBreaker(name='Foobar')
+    wrapper = cb(function)
+
+    assert (
+        isgeneratorfunction(function) == isgeneratorfunction(wrapper)
+        == (not is_async and is_generator)
+    )
+    assert (
+        iscoroutinefunction(function) == iscoroutinefunction(wrapper)
+        == (is_async and not is_generator)
+    )
+    assert (
+        isasyncgenfunction(function) == isasyncgenfunction(wrapper)
+        == (is_async and is_generator)
+    )
+
+
+async def test_circuitbreaker_should_save_last_exception_on_failure_call(
+    resolve_call, resolve_circuitbreaker_call_method, function, function_call_error
+):
     cb = CircuitBreaker(name='Foobar')
 
-    func = Mock(side_effect=IOError)
+    cb_call = resolve_circuitbreaker_call_method(cb)
+    with pytest.raises(function_call_error):
+        await resolve_call(cb_call(function))
 
-    with raises(IOError):
-        cb.call(func)
-
-    assert isinstance(cb.last_failure, IOError)
+    assert isinstance(cb.last_failure, function_call_error)
 
 
-def test_circuitbreaker_should_clear_last_exception_on_success_call():
+async def test_circuitbreaker_should_clear_last_exception_on_success_call(
+    resolve_call, resolve_circuitbreaker_call_method, function
+):
     cb = CircuitBreaker(name='Foobar')
     cb._last_failure = IOError()
     assert isinstance(cb.last_failure, IOError)
 
-    cb.call(lambda: True)
+    cb_call = resolve_circuitbreaker_call_method(cb)
+    await resolve_call(cb_call(function))
 
     assert cb.last_failure is None
 
 
-def test_circuitbreaker_should_call_fallback_function_if_open():
-    fallback = Mock(return_value=True)
-
-    func = Mock(return_value=False, __name__="Mock")  # attribute __name__ required for 2.7 compat with functools.wraps
-
+async def test_circuitbreaker_should_call_fallback_function_if_open(
+    resolve_call, function, fallback_function, mock_fallback_call, fallback_call_return_value
+):
     CircuitBreaker.opened = lambda self: True
 
-    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    decorated_func = cb.decorate(func)
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback_function)
+    decorated_func = cb.decorate(function)
 
-    decorated_func()
-    fallback.assert_called_once_with()
+    assert await resolve_call(decorated_func()) == fallback_call_return_value
+    mock_fallback_call.assert_called_once_with()
 
 
-def test_circuitbreaker_should_not_call_function_if_open():
-    fallback = Mock(return_value=True)
-
-    func = Mock(return_value=False, __name__="Mock")  # attribute __name__ required for 2.7 compat with functools.wraps
-
+async def test_circuitbreaker_should_not_call_function_if_open(
+    resolve_call, function, mock_function_call, fallback_function, fallback_call_return_value
+):
     CircuitBreaker.opened = lambda self: True
 
-    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback)
-    decorated_func = cb.decorate(func)
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback_function)
+    decorated_func = cb.decorate(function)
 
-    assert decorated_func() == fallback.return_value
-    assert not func.called
-
-
-def mocked_function(*args, **kwargs):
-    pass
+    assert await resolve_call(decorated_func()) == fallback_call_return_value
+    assert not mock_function_call.called
 
 
-def test_circuitbreaker_call_fallback_function_with_parameters():
-    fallback = Mock(return_value=True)
-
-    cb = circuit(name='with_fallback', fallback_function=fallback)
-
+async def test_circuitbreaker_call_fallback_function_with_parameters(
+    resolve_call, function, fallback_function, mock_fallback_call, fallback_call_return_value
+):
     # mock opened prop to see if fallback is called with correct parameters.
-    cb.opened = lambda self: True
-    func_decorated = cb.decorate(mocked_function)
+    CircuitBreaker.opened = lambda self: True
 
-    func_decorated('test2', test='test')
+    cb = CircuitBreaker(name='WithFallback', fallback_function=fallback_function)
+    decorated_func = cb.decorate(function)
+
+    assert await resolve_call(decorated_func('test2', test='test')) == fallback_call_return_value
 
     # check args and kwargs are getting correctly to fallback function
+    mock_fallback_call.assert_called_once_with('test2', test='test')
 
-    fallback.assert_called_once_with('test2', test='test')
 
-
-@patch('circuitbreaker.CircuitBreaker.decorate')
-def test_circuit_decorator_without_args(circuitbreaker_mock):
-    def function():
-        return True
-
+def test_circuit_decorator_without_args(mocker, function):
+    decorate_patch = mocker.patch.object(CircuitBreaker, 'decorate')
     circuit(function)
-    circuitbreaker_mock.assert_called_once_with(function)
+    decorate_patch.assert_called_once_with(function)
 
 
 def test_circuit_decorator_with_args():
@@ -154,12 +176,12 @@ def test_breaker_constructor_expected_exception_is_exception_list():
 
 
 def test_constructor_mistake_name_bytes():
-    with raises(ValueError, match="expected_exception cannot be a string *"):
+    with pytest.raises(ValueError, match="expected_exception cannot be a string *"):
         circuit(10, 20, b"foobar")
 
 
 def test_constructor_mistake_name_unicode():
-    with raises(ValueError, match="expected_exception cannot be a string *"):
+    with pytest.raises(ValueError, match="expected_exception cannot be a string *"):
         circuit(10, 20, u"foobar")
 
 
@@ -167,7 +189,7 @@ def test_constructor_mistake_expected_exception():
     class Widget:
         pass
 
-    with raises(ValueError, match="expected_exception does not look like a predicate*"):
+    with pytest.raises(ValueError, match="expected_exception does not look like a predicate*"):
         circuit(10, 20, expected_exception=Widget)
 
 

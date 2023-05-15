@@ -9,11 +9,9 @@ def readme():
         return f.read()
 
 
-dependencies = ["typing; python_version < '3.5'", "monotonic; python_version < '3.0'"]
-
 setup(
     name='circuitbreaker',
-    version='1.4.0',
+    version='2.0.0',
     url='https://github.com/fabfuel/circuitbreaker',
     download_url='https://github.com/fabfuel/circuitbreaker/archive/1.3.1.tar.gz',
     license='BSD-3-Clause',
@@ -25,7 +23,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     platforms='any',
-    install_requires=dependencies,
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
@@ -33,7 +30,7 @@ setup(
         'Operating System :: MacOS',
         'Operating System :: Unix',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
-    ]
+    ],
+    options={'bdist_wheel': {'universal': True}}
 )
