@@ -1,5 +1,5 @@
 from asyncio import iscoroutinefunction
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from inspect import isgeneratorfunction, isasyncgenfunction, isclass
 from math import ceil, floor
@@ -245,7 +245,7 @@ class CircuitBreaker(object):
         The approximate datetime when the circuit breaker will try to recover
         :return: datetime
         """
-        return datetime.utcnow() + timedelta(seconds=self.open_remaining)
+        return datetime.now(timezone.utc) + timedelta(seconds=self.open_remaining)
 
     @property
     def open_remaining(self):
