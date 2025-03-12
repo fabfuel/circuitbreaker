@@ -116,7 +116,7 @@ class CircuitBreaker(object):
             self._last_failure = exc_value
             self.__call_failed()
         else:
-            self.__call_succeeded()
+            self.reset()
         return False  # return False to raise exception if any
 
     def decorate(self, function):
@@ -216,9 +216,9 @@ class CircuitBreaker(object):
             async for el in func(*args, **kwargs):
                 yield el
 
-    def __call_succeeded(self):
+    def reset(self):
         """
-        Close circuit after successful execution and reset failure count
+        Close circuit and reset failure count
         """
         self._state = STATE_CLOSED
         self._last_failure = None
