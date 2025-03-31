@@ -8,7 +8,7 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
-VERSION = '2.1.2'
+VERSION = '2.1.3'
 
 setup(
     name='circuitbreaker',
@@ -34,8 +34,5 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
-        'Programming Language :: Python :: 3.11'
-        'Programming Language :: Python :: 3.12'
-        'Programming Language :: Python :: 3.13'
     ],
 )
