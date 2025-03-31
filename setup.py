@@ -8,7 +8,7 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
-VERSION = '2.1.1'
+VERSION = '2.1.2'
 
 setup(
     name='circuitbreaker',
