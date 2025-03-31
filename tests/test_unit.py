@@ -34,6 +34,11 @@ def test_circuitbreaker__str__():
     assert str(cb) == 'Foobar'
 
 
+def test_circuitbreaker_unnamed__str__():
+    cb = CircuitBreaker()
+    assert str(cb) == 'unnamed_CircuitBreaker'
+
+
 def test_circuitbreaker_error__str__():
     cb = CircuitBreaker(name='Foobar')
     cb._last_failure = Exception()

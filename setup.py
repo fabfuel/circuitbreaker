@@ -8,12 +8,13 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
+VERSION = '2.1.1'
 
 setup(
     name='circuitbreaker',
-    version='2.1.0',
+    version=VERSION,
     url='https://github.com/fabfuel/circuitbreaker',
-    download_url='https://github.com/fabfuel/circuitbreaker/archive/1.3.1.tar.gz',
+    download_url='https://github.com/fabfuel/circuitbreaker/archive/%s.tar.gz' % VERSION,
     license='BSD-3-Clause',
     author='Fabian Fuelling',
     author_email='pypi@fabfuel.de',
@@ -30,7 +31,11 @@ setup(
         'Operating System :: MacOS',
         'Operating System :: Unix',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11'
+        'Programming Language :: Python :: 3.12'
+        'Programming Language :: Python :: 3.13'
     ],
-    options={'bdist_wheel': {'universal': True}}
 )
