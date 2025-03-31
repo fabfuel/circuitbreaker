@@ -281,7 +281,7 @@ class CircuitBreaker(object):
         return self._fallback_function
 
     def __str__(self, *args, **kwargs):
-        return self._name
+        return self.name or 'unnamed_CircuitBreaker'
 
 
 class CircuitBreakerError(Exception):
