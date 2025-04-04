@@ -1,9 +1,11 @@
 from asyncio import iscoroutinefunction
 from inspect import isgeneratorfunction, isasyncgenfunction
+import sys
+import importlib.util
 
 import pytest
 
-from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
+from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit, CircuitBreakerMonitor
 
 
 @pytest.fixture
@@ -237,3 +239,41 @@ def test_advanced_usage_circuitbreaker_default_expected_exception():
     breaker = circuit(cls=NervousBreaker)
     assert breaker._failure_threshold == 1
     assert breaker.is_failure(Exception, Exception())
+
+
+def test_monitor_naming(tmp_path):
+    module_1_path = tmp_path / "module_1.py"
+    module_2_path = tmp_path / "module_2.py"
+
+    module_1_path.write_text("""
+from circuitbreaker import circuit
+
+@circuit(failure_threshold=1)
+def func():
+    pass
+""")
+
+    module_2_path.write_text("""
+from circuitbreaker import circuit
+
+@circuit(failure_threshold=1)
+def func():
+    pass
+""")
+
+    for path in [module_1_path, module_2_path]:
+        spec = importlib.util.spec_from_file_location(path.stem, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+
+    cb = CircuitBreakerMonitor.get("func")
+    cb1 = CircuitBreakerMonitor.get("module_1.func")
+    cb2 = CircuitBreakerMonitor.get("module_2.func")
+
+    assert cb is not None
+    assert cb1 is not None
+    assert cb2 is not None
+    assert cb == cb2
+    assert cb != cb1
+    assert cb1.name == cb2.name == cb.name == "func"

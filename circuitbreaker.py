@@ -129,7 +129,7 @@ class CircuitBreaker(object):
             except AttributeError:
                 self._name = function.__name__
 
-        CircuitBreakerMonitor.register(self)
+        CircuitBreakerMonitor.register(self, function.__module__)
 
         if iscoroutinefunction(function) or isasyncgenfunction(function):
             return self._decorate_async(function)
@@ -309,8 +309,11 @@ class CircuitBreakerMonitor(object):
     circuit_breakers = {}
 
     @classmethod
-    def register(cls, circuit_breaker):
+    def register(cls, circuit_breaker, module_name=''):
         cls.circuit_breakers[circuit_breaker.name] = circuit_breaker
+        if module_name:
+            full_name = module_name + '.' + circuit_breaker.name
+            cls.circuit_breakers[full_name] = circuit_breaker
 
     @classmethod
     def all_closed(cls) -> bool:
@@ -318,7 +321,8 @@ class CircuitBreakerMonitor(object):
 
     @classmethod
     def get_circuits(cls) -> Iterable[CircuitBreaker]:
-        return cls.circuit_breakers.values()
+        # deduplicate circuitbreakers registered with multiple names
+        return {id(cb): cb for cb in cls.circuit_breakers.values()}.values()
 
     @classmethod
     def get(cls, name: AnyStr) -> CircuitBreaker:
