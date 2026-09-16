@@ -41,8 +41,8 @@ This decorator sets up a circuit breaker with the default settings. The circuit 
 - monitors the function execution and counts failures
 - resets the failure count after every successful execution (while it is closed)
 - opens and prevents further executions after 5 subsequent failures
-- switches to half-open and allows one test-execution after 30 seconds recovery timeout
-- closes if the test-execution succeeded
+- switches to half-open and allows a test-execution after 30 seconds recovery timeout
+- closes after **one** successful half-open probe by default; this can be configured via ``success_threshold`` to require several consecutive successful half-open probes before closing
 - considers all raised exceptions (based on class ``Exception``) as an expected failure
 - is named "external_call" - the name of the function it decorates
 
@@ -96,6 +96,16 @@ recovery timeout
 By default, the circuit breaker stays open for 30 seconds to allow the integration point to recover.
 You can adjust this value with the ``recovery_timeout`` parameter.
 
+success threshold
+=================
+By default, the circuit breaker closes after **one** successful half-open probe.
+You can adjust this value with the ``success_threshold`` parameter.
+
+``success_threshold`` is the number of consecutive successful probes required while the circuit is half-open.
+A counted failure in half-open zeros the success streak and reopens the circuit immediately.
+
+This option only applies in half-open. While closed, a successful execution still zeros the failure count.
+
 expected exception
 ==================
 By default, the circuit breaker listens for all exceptions which are based on the ``Exception`` class.
@@ -147,6 +157,7 @@ you can extend the ``CircuitBreaker`` class and create your own circuit breaker 
     class MyCircuitBreaker(CircuitBreaker):
         FAILURE_THRESHOLD = 10
         RECOVERY_TIMEOUT = 60
+        SUCCESS_THRESHOLD = 3
         EXPECTED_EXCEPTION = RequestException
 
 

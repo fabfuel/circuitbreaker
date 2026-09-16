@@ -1,9 +1,17 @@
 from asyncio import iscoroutinefunction
 from inspect import isgeneratorfunction, isasyncgenfunction
+from time import monotonic
 
 import pytest
 
-from circuitbreaker import CircuitBreaker, CircuitBreakerError, circuit
+from circuitbreaker import (
+    CircuitBreaker,
+    CircuitBreakerError,
+    STATE_CLOSED,
+    STATE_HALF_OPEN,
+    STATE_OPEN,
+    circuit,
+)
 
 
 @pytest.fixture
@@ -151,6 +159,16 @@ def test_circuit_decorator_with_args():
     assert breaker._fallback_function == function_fallback
 
 
+def test_circuit_decorator_preserves_positional_cls():
+    class CustomBreaker(CircuitBreaker):
+        pass
+
+    breaker = circuit(10, 20, KeyError, 'foobar', None, CustomBreaker)
+
+    assert isinstance(breaker, CustomBreaker)
+    assert breaker._success_threshold == 1
+
+
 def test_breaker_expected_exception_is_predicate():
     def is_four_foo(thrown_type, thrown_value):
         return thrown_value.val == 4
@@ -237,3 +255,161 @@ def test_advanced_usage_circuitbreaker_default_expected_exception():
     breaker = circuit(cls=NervousBreaker)
     assert breaker._failure_threshold == 1
     assert breaker.is_failure(Exception, Exception())
+
+
+def test_success_threshold_defaults_to_one():
+    breaker = CircuitBreaker()
+    assert breaker._success_threshold == 1
+
+
+def test_success_threshold_constructor_arg_stored():
+    breaker = CircuitBreaker(success_threshold=3)
+    assert breaker._success_threshold == 3
+
+
+def test_success_threshold_explicit_one_stored():
+    breaker = CircuitBreaker(success_threshold=1)
+    assert breaker._success_threshold == 1
+
+
+def test_success_threshold_subclass_class_attribute():
+    class PatientBreaker(CircuitBreaker):
+        SUCCESS_THRESHOLD = 3
+
+    breaker = circuit(cls=PatientBreaker)
+    assert breaker._success_threshold == 3
+
+
+def test_success_threshold_constructor_overrides_subclass():
+    class PatientBreaker(CircuitBreaker):
+        SUCCESS_THRESHOLD = 3
+
+    breaker = circuit(success_threshold=5, cls=PatientBreaker)
+    assert breaker._success_threshold == 5
+
+
+def test_success_threshold_zero_raises_value_error():
+    with pytest.raises(ValueError):
+        CircuitBreaker(success_threshold=0)
+
+
+def test_success_threshold_negative_raises_value_error():
+    with pytest.raises(ValueError):
+        CircuitBreaker(success_threshold=-1)
+
+
+def test_circuit_decorator_forwards_success_threshold():
+    breaker = circuit(success_threshold=3)
+    assert breaker._success_threshold == 3
+
+
+def test_circuit_decorator_success_threshold_zero_raises_value_error():
+    with pytest.raises(ValueError):
+        circuit(success_threshold=0)
+
+
+def test_success_count_starts_at_zero():
+    breaker = CircuitBreaker()
+    assert breaker.success_count == 0
+
+
+async def test_circuitbreaker_closed_success_full_reset(
+    resolve_call, resolve_circuitbreaker_call_method, function
+):
+    cb = CircuitBreaker(name="Foobar", success_threshold=3)
+    cb._failure_count = 2
+    cb._last_failure = IOError()
+    cb._success_count = 1
+
+    assert cb.state == STATE_CLOSED
+
+    cb_call = resolve_circuitbreaker_call_method(cb)
+    await resolve_call(cb_call(function))
+
+    assert cb.closed
+    assert cb.state == STATE_CLOSED
+    assert cb.failure_count == 0
+    assert cb.success_count == 0
+    assert cb.last_failure is None
+
+
+async def test_circuitbreaker_genuinely_open_direct_success_full_reset(
+    resolve_call, resolve_circuitbreaker_call_method, function
+):
+    cb = CircuitBreaker(name="Foobar", success_threshold=3, recovery_timeout=30)
+    cb._state = STATE_OPEN
+    cb._opened = monotonic()
+    cb._failure_count = 5
+    cb._last_failure = IOError()
+
+    assert cb.state == STATE_OPEN
+    assert cb.open_remaining > 0
+
+    cb_call = resolve_circuitbreaker_call_method(cb)
+    await resolve_call(cb_call(function))
+
+    assert cb.closed
+    assert cb.state == STATE_CLOSED
+    assert cb.failure_count == 0
+    assert cb.success_count == 0
+    assert cb.last_failure is None
+
+
+def test_circuitbreaker_genuinely_open_context_manager_success_full_reset():
+    cb = CircuitBreaker(name="Foobar", success_threshold=3, recovery_timeout=30)
+    cb._state = STATE_OPEN
+    cb._opened = monotonic()
+    cb._failure_count = 5
+    cb._last_failure = IOError()
+
+    assert cb.state == STATE_OPEN
+    assert cb.open_remaining > 0
+
+    with cb:
+        pass
+
+    assert cb.closed
+    assert cb.state == STATE_CLOSED
+    assert cb.failure_count == 0
+    assert cb.success_count == 0
+    assert cb.last_failure is None
+
+
+async def test_circuitbreaker_half_open_direct_success_increments_count(
+    resolve_call, resolve_circuitbreaker_call_method, function
+):
+    cb = CircuitBreaker(name="Foobar", success_threshold=3, recovery_timeout=30)
+    cb._state = STATE_OPEN
+    cb._opened = monotonic() - 31
+    cb._failure_count = 5
+    cb._last_failure = IOError()
+
+    assert cb.state == STATE_HALF_OPEN
+    assert cb.open_remaining < 0
+
+    cb_call = resolve_circuitbreaker_call_method(cb)
+    await resolve_call(cb_call(function))
+
+    assert cb.state == STATE_HALF_OPEN
+    assert cb.success_count == 1
+    assert cb.failure_count == 5
+    assert cb.last_failure is not None
+
+
+def test_circuitbreaker_half_open_context_manager_success_increments_count():
+    cb = CircuitBreaker(name="Foobar", success_threshold=3, recovery_timeout=30)
+    cb._state = STATE_OPEN
+    cb._opened = monotonic() - 31
+    cb._failure_count = 5
+    cb._last_failure = IOError()
+
+    assert cb.state == STATE_HALF_OPEN
+    assert cb.open_remaining < 0
+
+    with cb:
+        pass
+
+    assert cb.state == STATE_HALF_OPEN
+    assert cb.success_count == 1
+    assert cb.failure_count == 5
+    assert cb.last_failure is not None

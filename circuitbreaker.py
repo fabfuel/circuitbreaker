@@ -57,6 +57,7 @@ def build_failure_predicate(expected_exception):
 
 class CircuitBreaker(object):
     FAILURE_THRESHOLD = 5
+    SUCCESS_THRESHOLD = 1
     RECOVERY_TIMEOUT = 30
     EXPECTED_EXCEPTION = Exception
     FALLBACK_FUNCTION = None
@@ -66,7 +67,8 @@ class CircuitBreaker(object):
                  recovery_timeout=None,
                  expected_exception=None,
                  name=None,
-                 fallback_function=None
+                 fallback_function=None,
+                 success_threshold=None
                  ):
         """
         Construct a circuit breaker.
@@ -76,13 +78,22 @@ class CircuitBreaker(object):
         :param expected_exception: either an type of Exception, iterable of Exception types, or a predicate function.
         :param name: name for this circuitbreaker
         :param fallback_function: called when the circuit is opened
+        :param success_threshold: close after this many consecutive successes while half-open
 
            :return: Circuitbreaker instance
            :rtype: Circuitbreaker
         """
         self._last_failure = None
         self._failure_count = 0
+        self._success_count = 0
         self._failure_threshold = failure_threshold or self.FAILURE_THRESHOLD
+        self._success_threshold = (
+            self.SUCCESS_THRESHOLD
+            if success_threshold is None
+            else success_threshold
+        )
+        if self._success_threshold <= 0:
+            raise ValueError("success_threshold must be greater than 0")
         self._recovery_timeout = recovery_timeout or self.RECOVERY_TIMEOUT
 
         # Build the failure predicate. In order of precedence, prefer the
@@ -115,6 +126,10 @@ class CircuitBreaker(object):
             # exception was raised and is our concern
             self._last_failure = exc_value
             self.__call_failed()
+        elif self.state == STATE_HALF_OPEN:
+            self._success_count += 1
+            if self._success_count >= self._success_threshold:
+                self.reset()
         else:
             self.reset()
         return False  # return False to raise exception if any
@@ -223,12 +238,14 @@ class CircuitBreaker(object):
         self._state = STATE_CLOSED
         self._last_failure = None
         self._failure_count = 0
+        self._success_count = 0
 
     def __call_failed(self):
         """
         Count failure and open circuit, if threshold has been reached
         """
         self._failure_count += 1
+        self._success_count = 0
         if self._failure_count >= self._failure_threshold:
             self._state = STATE_OPEN
             self._opened = monotonic()
@@ -259,6 +276,10 @@ class CircuitBreaker(object):
     @property
     def failure_count(self):
         return self._failure_count
+
+    @property
+    def success_count(self):
+        return self._success_count
 
     @property
     def closed(self):
@@ -336,13 +357,20 @@ class CircuitBreakerMonitor(object):
             if circuit.closed:
                 yield circuit
 
+    @classmethod
+    def get_half_open(cls) -> Iterable[CircuitBreaker]:
+        for circuit in cls.get_circuits():
+            if circuit.state == STATE_HALF_OPEN:
+                yield circuit
+
 
 def circuit(failure_threshold=None,
             recovery_timeout=None,
             expected_exception=None,
             name=None,
             fallback_function=None,
-            cls=CircuitBreaker):
+            cls=CircuitBreaker,
+            success_threshold=None):
     # if the decorator is used without parameters, the
     # wrapped function is provided as first argument
     if callable(failure_threshold):
@@ -353,4 +381,5 @@ def circuit(failure_threshold=None,
             recovery_timeout=recovery_timeout,
             expected_exception=expected_exception,
             name=name,
-            fallback_function=fallback_function)
+            fallback_function=fallback_function,
+            success_threshold=success_threshold)
