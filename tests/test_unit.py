@@ -1,5 +1,5 @@
-from asyncio import iscoroutinefunction
-from inspect import isgeneratorfunction, isasyncgenfunction
+import warnings
+from inspect import iscoroutinefunction, isgeneratorfunction, isasyncgenfunction
 
 import pytest
 
@@ -46,6 +46,21 @@ def test_circuitbreaker_error__str__():
 
     assert str(error).startswith('Circuit "Foobar" OPEN until ')
     assert str(error).endswith('(0 failures, 30 sec remaining) (last_failure: Exception())')
+
+
+def test_circuitbreaker_decorate_does_not_warn_about_coroutine_detection():
+    # `asyncio.iscoroutinefunction` is deprecated since Python 3.14 and scheduled for
+    # removal in 3.16, where importing it fails outright. Decorating must not use it.
+    def sync_target():
+        pass
+
+    async def async_target():
+        pass
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error', DeprecationWarning)
+        CircuitBreaker(name='Foobar').decorate(sync_target)
+        CircuitBreaker(name='Barbaz').decorate(async_target)
 
 
 async def test_circuitbreaker_wrapper_matches_function_type(function, is_async, is_generator):
