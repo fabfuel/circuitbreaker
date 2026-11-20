@@ -1,7 +1,6 @@
-from asyncio import iscoroutinefunction
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from inspect import isgeneratorfunction, isasyncgenfunction, isclass
+from inspect import iscoroutinefunction, isgeneratorfunction, isasyncgenfunction, isclass
 from math import ceil, floor
 from time import monotonic
 from typing import AnyStr, Iterable
